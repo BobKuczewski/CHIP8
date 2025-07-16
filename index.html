@@ -470,6 +470,28 @@ function disassemble() {
 				<textarea id="source" rows="25" cols="36"
 				   autocomplete="off" autocorrect="off"
 				   autocapitalize="off" spellcheck="false">
+LD I,21E
+RND V2,01
+SE V2,01
+LD I,21A
+DRW V0,V1,4
+ADD V0,04
+SE V0,40
+JP 200
+LD V0,00
+ADD V1,04
+SE V1,20
+JP 200
+JP 218
+LD V0,V4
+CALL 010
+CALL 040
+LD V0,V1
+				</textarea>
+
+
+<!-- Junk test code
+
 L200: LD I,21E		 ; Top
 L202: RND V2,01
 L204: SE V2,01
@@ -525,7 +547,7 @@ LD F, V5
 LD B, V5
 LD [I], V5
 LD V5, [I]
-				</textarea>
+-->
 				</center>
 			</td>
 			<td>
