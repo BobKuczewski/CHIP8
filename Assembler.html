@@ -327,7 +327,8 @@ function disassemble() {
 	for (l=0; l<lines.length; l++) {
 
 		if (opts.indexOf("L") >= 0) {
-		  document.getElementById ( "source" ).value += "L"+((l*2)+0x200).toString(16).toUpperCase() + ": ";
+		  // document.getElementById ( "source" ).value += "L"+((l*2)+0x200).toString(16).toUpperCase() + ": ";
+		  document.getElementById ( "source" ).value += ((l*2)+0x200).toString(16).toUpperCase() + ": ";
 		}
 		if (opts.indexOf("H") >= 0) {
 		  document.getElementById ( "source" ).value += lines[l] + "  ";
@@ -343,9 +344,11 @@ function disassemble() {
 		} else if (lines[l][0] == "0") {
 		  document.getElementById ( "source" ).value += "SYS " + lines[l].slice(1) + "\n";
 		} else if (lines[l][0] == "1") {
-		  document.getElementById ( "source" ).value += "JP L" + lines[l].slice(1) + "\n";
+		  // document.getElementById ( "source" ).value += "JP L" + lines[l].slice(1) + "\n";
+		  document.getElementById ( "source" ).value += "JP " + lines[l].slice(1) + "\n";
 		} else if (lines[l][0] == "2") {
-		  document.getElementById ( "source" ).value += "CALL L" + lines[l].slice(1) + "\n";
+		  // document.getElementById ( "source" ).value += "CALL L" + lines[l].slice(1) + "\n";
+		  document.getElementById ( "source" ).value += "CALL " + lines[l].slice(1) + "\n";
 		} else if (lines[l][0] == "A") {
 		  document.getElementById ( "source" ).value += "LD I," + lines[l].slice(1) + "\n";
 		} else if (lines[l][0] == "B") {
