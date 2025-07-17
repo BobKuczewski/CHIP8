@@ -506,27 +506,36 @@ function disassemble() {
   	<tr>
 		  <td valign="top">
 				<center>
-				<textarea id="source" rows="25" cols="40"
+				<textarea id="source" rows="27" cols="50"
 				   autocomplete="off" autocorrect="off"
 				   autocapitalize="off" spellcheck="false">
-TOP: LD I,R3
-     RND V2,01
-     SE V2,01
-     LD I,R1
-     DRW V0,V1,4
-     ADD V0,04
-     SE V0,40
-     JP TOP
-     LD V0,00
-     ADD V1,04
-     SE V1,20
-     JP TOP
-END: JP END
-R1:  DATA 8040
-R2:  DATA 2010
-R3:  DATA 2040
-R4:  DATA 8010
-</textarea>
+;===========================;
+; Generate a maze in CHIP-8 ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;   V2 used for random bit  ;
+;===========================;
+
+TOP: LD I,R3      ; Load sprite address
+     RND V2,01    ; Put random bit in V2
+     SE V2,01     ; Skip if V2=1 (random)
+     LD I,R1      ; Load a different sprite
+     DRW V0,V1,4  ; Draw at (V0,V1) 4 rows
+     ADD V0,04    ; Add 4 to x coord
+     SE V0,40     ; Skip if at end of V0
+     JP TOP       ; Go back to top
+     LD V0,00     ; At end so go back x=0
+     ADD V1,04    ; Add 4 to y
+     SE V1,20     ; Skip if end of y (done)
+     JP TOP       ; Go back to top
+END: JP END       ; Stay here ... forever
+
+R1:  DATA 8040    ; Image data
+R2:  DATA 2010    ; Image data
+R3:  DATA 2040    ; Image data
+R4:  DATA 8010    ; Image data</textarea>
 
 				</center>
 			</td>
@@ -561,7 +570,7 @@ R4:  DATA 8010
 							 60 00 71 04 31 20 12 00 12 18 80 40 20 10 20 40
 							 80 10 -->
 
-				<textarea id="machine" rows="25" cols="20"
+				<textarea id="machine" rows="27" cols="20"
 				   autocomplete="off" autocorrect="off"
 				   autocapitalize="off" spellcheck="false">
 A21E
@@ -592,6 +601,9 @@ D014
 <table><tr><td>
 <tt>
 <pre>
+Code   Assembly           Description - All numbers are hexadecimal
+----   --------           -----------------------------------------
+       lbl:               A label - must not match any other string in the program!
 nnnn - DATA nnnn          Initialize a data word (all values in hex)
 
 0nnn - SYS addr           Jump to a machine code routine at nnn.
