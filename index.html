@@ -81,17 +81,56 @@ function assemble() {
 	while (text.indexOf("\n\n") >= 0) {
 		text = replaceAll(text, "\n\n", "\n");
 	}
-	console.log ( text );
+	// console.log ( text );
 	// Convert all white space to spaces
 	// text = text.replace(/\s+/g,' ');
   // Remove all double spaces
 	while (text.indexOf("  ") >= 0) {
 		text = replaceAll(text, "  ", " ");
 	}
-	console.log ( text );
+	// console.log ( text );
 	// Split the text into an array of lines
   lines = text.split("\n");
-	console.log ( "lines=" + lines );
+	// console.log ( "lines=" + lines );
+
+  // Remove all comments and empty lines
+  new_lines = [];
+	for (l=0; l<lines.length; l++) {
+	  line = lines[l].toUpperCase().trim();
+	  if (line.indexOf(";") >= 0) {
+			// Remove the comment
+			line = line.substr(0,line.indexOf(";")).trim();
+	  }
+	  if (line.trim().length > 0) {
+			new_lines.push ( line.trim() );
+	  }
+	}
+	lines = new_lines;
+
+  // Compute the label addresses
+  label_dict = {};
+	for (l=0; l<lines.length; l++) {
+	  line = lines[l].toUpperCase().trim();
+	  if (line.indexOf(":") >= 0) {
+	    // Store the label and its location
+	    label = line.substr(0,line.indexOf(":"));
+	    label_dict[label] = ((2*l)+0x200).toString(16);
+	    while (label_dict[label].length < 3) {
+	      label_dict[label] = '0' + label_dict[label];
+	    }
+	    // Remove the label from the line of code for assembly
+	    lines[l] = lines[l].substr(line.indexOf(":")+1).trim();
+	  }
+	}
+	keys = Object.keys(label_dict);
+	// console.log ( "labels = " + keys );
+	for (l=0; l<lines.length; l++) {
+	  for (ki=0; ki<keys.length; ki++) {
+	    // console.log ( "Searching for " + keys[ki] );
+      lines[l] = replaceAll( lines[l].toUpperCase(), keys[ki], label_dict[keys[ki]]);
+	  }
+	}
+
   // Clear the machine code window
   mcwin = document.getElementById ( "machine" );
   mcwin.value = "";
@@ -297,7 +336,7 @@ function disassemble() {
   bintxt = document.getElementById ( "machine" ).value;
   // console.log ( "Text = " + bintxt );
   opts = document.getElementById ( "disassem_opts" ).value;
-  console.log ( "Disassemble with options: " + opts );
+  // console.log ( "Disassemble with options: " + opts );
 
   // Normalize line endings and remove empty lines
 	text = replaceAll( bintxt, "\r", "\n");
@@ -467,87 +506,28 @@ function disassemble() {
   	<tr>
 		  <td valign="top">
 				<center>
-				<textarea id="source" rows="25" cols="36"
+				<textarea id="source" rows="25" cols="40"
 				   autocomplete="off" autocorrect="off"
 				   autocapitalize="off" spellcheck="false">
-LD I,21E
-RND V2,01
-SE V2,01
-LD I,21A
-DRW V0,V1,4
-ADD V0,04
-SE V0,40
-JP 200
-LD V0,00
-ADD V1,04
-SE V1,20
-JP 200
-JP 218
-LD V0,V4
-CALL 010
-CALL 040
-LD V0,V1
-				</textarea>
+TOP: LD I,R3
+     RND V2,01
+     SE V2,01
+     LD I,R1
+     DRW V0,V1,4
+     ADD V0,04
+     SE V0,40
+     JP TOP
+     LD V0,00
+     ADD V1,04
+     SE V1,20
+     JP TOP
+END: JP END
+R1:  DATA 8040
+R2:  DATA 2010
+R3:  DATA 2040
+R4:  DATA 8010
+</textarea>
 
-
-<!-- Junk test code
-
-L200: LD I,21E		 ; Top
-L202: RND V2,01
-L204: SE V2,01
-L206: LD I,21A
-L208: DRW V0,V1,4
-L20A: ADD V0,04
-L20C: SE V0,40
-L20E: JP 200		  ; JP Top
-L210: LD V0,00
-L212: ADD V1,04
-L214: SE V1,20
-L216: JP 200		  ; JP Top
-L218: JP 218		  ; JP Here (done)
-L21A: Data 8040		; Data 8040
-L21C: Data 2010		; Data 2010
-L21E: DATA 2040		; DATA 2040
-L220: DATA 8010		; DATA 8010
-
-CLS
-RET
-SYS 123
-JP 123
-CALL 123
-SE V5, fa
-SNE V5, fa
-SE V5, V6
-LD V5, fa
-ADD V5, fa
-LD V5, V6
-OR V5, V6
-AND V5, V6
-XOR V5, V6
-ADD V5, V6
-SUB V5, V6
-SHR V5
-SHR V5, V6
-SUBN V5, V6
-SHL V5
-SHL V5, V6
-SNE V5, V6
-LD I, 123
-JP V0, 123
-RND V5, fa
-DRW V5, V6, 5
-SKP V5
-SKNP V5
-LD V5, DT
-LD V5, K
-LD DT, V5
-LD ST, V5
-ADD I, V5
-LD F, V5
-LD B, V5
-LD [I], V5
-LD V5, [I]
--->
 				</center>
 			</td>
 			<td>
@@ -560,8 +540,8 @@ LD V5, [I]
 				<p/>
 				<input type="button" name="disassem" value="<==" onclick="disassemble();"></input>
 				<select id="disassem_opts" onchange="changed_format()">
-				<option value="S" selected>Src</option>
-				<option value="LS">Lab+Src</option> -->
+				<option value="S">Src</option>
+				<option value="LS" selected>Lab+Src</option> -->
 				<option value="HS">Hex+Src</option> -->
 				<option value="LHS">Lab+Hex+Src</option> -->
 				</select>
@@ -580,102 +560,15 @@ LD V5, [I]
 							 a2 1e c2 01 32 01 a2 1a d0 14 70 04 30 40 12 00
 							 60 00 71 04 31 20 12 00 12 18 80 40 20 10 20 40
 							 80 10 -->
-<!-- Running Maze by hand (adding changes to the left)
-I:  21A 21E 21E 21A 21E 21A 21E 21E 0?
-V0: 10 C 9 4 0?
-V1: 0?
-V2: 0 1 0 0 1 0?
-VF: 0?
-PC: 208 206 204 202 200 20C 20A 208 204 202 200 20C 20A 208 206 204 202 200 20C 20A 208 206 204 202 200 20C 20A 208 204 202 200
-SP: 0?
-21A: 80 = 10000000
-21B: 40 = 01000000
-21C: 20 = 00100000
-21D: 10 = 00010000
-21E: 20 = 00100000
-21F: 40 = 01000000
-220: 80 = 10000000
-222: 10 = 00010000
-0123456789ABCDEF0123456789ABCDEF0
-001010001000001010000000
-010001000100010001000000
-100000100010100000100000
-000100010001000100010000
--->
 
-<!-- Maze code
-200 a21e LD   I,21E
-202 c201 RND  V2,01
-204 3201 SE   V2,01
-206 a21a LD   I,21A
-208 d014 DRW  V0,V1,4
-20A 7004 ADD  V0,04
-20C 3040 SE   V0,40
-20E 1200 JP   200
-210 6000 LD   V0,00
-212 7104 ADD  V1,04
-214 3120 SE   V1,20
-216 1200 JP   200
-218 1218 JP   218
-21A 8040  1000 0000 0100 0000
-21C 2010  0010 0000 0001 0000
-21E 2040  0010 0000 0100 0000
-220 8010  1000 0000 0001 0000
--->
-
-				<!-- $ od -v -tx1 -An bin/chip8/games/Tetris.ch8
-							 a2 b4 23 e6 22 b6 70 01 d0 11 30 25 12 06 71 ff
-							 d0 11 60 1a d0 11 60 25 31 00 12 0e c4 70 44 70
-							 12 1c c3 03 60 1e 61 03 22 5c f5 15 d0 14 3f 01
-							 12 3c d0 14 71 ff d0 14 23 40 12 1c e7 a1 22 72
-							 e8 a1 22 84 e9 a1 22 96 e2 9e 12 50 66 00 f6 15
-							 f6 07 36 00 12 3c d0 14 71 01 12 2a a2 c4 f4 1e
-							 66 00 43 01 66 04 43 02 66 08 43 03 66 0c f6 1e
-							 00 ee d0 14 70 ff 23 34 3f 01 00 ee d0 14 70 01
-							 23 34 00 ee d0 14 70 01 23 34 3f 01 00 ee d0 14
-							 70 ff 23 34 00 ee d0 14 73 01 43 04 63 00 22 5c
-							 23 34 3f 01 00 ee d0 14 73 ff 43 ff 63 03 22 5c
-							 23 34 00 ee 80 00 67 05 68 06 69 04 61 1f 65 10
-							 62 07 00 ee 40 e0 00 00 40 c0 40 00 00 e0 40 00
-							 40 60 40 00 40 40 60 00 20 e0 00 00 c0 40 40 00
-							 00 e0 80 00 40 40 c0 00 00 e0 20 00 60 40 40 00
-							 80 e0 00 00 40 c0 80 00 c0 60 00 00 40 c0 80 00
-							 c0 60 00 00 80 c0 40 00 00 60 c0 00 80 c0 40 00
-							 00 60 c0 00 c0 c0 00 00 c0 c0 00 00 c0 c0 00 00
-							 c0 c0 00 00 40 40 40 40 00 f0 00 00 40 40 40 40
-							 00 f0 00 00 d0 14 66 35 76 ff 36 00 13 38 00 ee
-							 a2 b4 8c 10 3c 1e 7c 01 3c 1e 7c 01 3c 1e 7c 01
-							 23 5e 4b 0a 23 72 91 c0 00 ee 71 01 13 50 60 1b
-							 6b 00 d0 11 3f 00 7b 01 d0 11 70 01 30 25 13 62
-							 00 ee 60 1b d0 11 70 01 30 25 13 74 8e 10 8d e0
-							 7e ff 60 1b 6b 00 d0 e1 3f 00 13 90 d0 e1 13 94
-							 d0 d1 7b 01 70 01 30 25 13 86 4b 00 13 a6 7d ff
-							 7e ff 3d 01 13 82 23 c0 3f 01 23 c0 7a 01 23 c0
-							 80 a0 6d 07 80 d2 40 04 75 fe 45 02 65 04 00 ee
-							 a7 00 f2 55 a8 04 fa 33 f2 65 f0 29 6d 32 6e 00
-							 dd e5 7d 05 f1 29 dd e5 7d 05 f2 29 dd e5 a7 00
-							 f2 65 a2 b4 00 ee 6a 00 60 19 00 ee 37 23 -->
-
-				<!-- $ od -v -tx1 -An bin/chip8/games/Guess.ch8
-							 6e 01 00 e0 6d 01 6a 01 6b 01 8c d0 8c e2 4c 00
-							 12 20 88 d0 22 3e 3a 40 12 20 6a 01 7b 06 3c 3f
-							 7d 01 3d 3f 12 0a f0 0a 40 05 89 e4 8e e4 3e 40
-							 12 02 6a 1c 6b 0d 88 90 00 e0 22 3e 12 3c a2 94
-							 f8 33 f2 65 22 54 da b5 7a 04 81 20 22 54 da b5
-							 7a 05 00 ee 83 10 83 34 83 34 83 14 a2 62 f3 1e
-							 00 ee e0 a0 a0 a0 e0 40 40 40 40 40 e0 20 e0 80
-							 e0 e0 20 e0 20 e0 a0 a0 e0 20 20 e0 80 e0 20 e0
-							 e0 80 e0 a0 e0 e0 20 20 20 20 e0 a0 e0 a0 e0 e0
-							 a0 e0 20 e0 -->
-
-				<textarea id="machine" rows="25" cols="36"
+				<textarea id="machine" rows="25" cols="20"
 				   autocomplete="off" autocorrect="off"
 				   autocapitalize="off" spellcheck="false">
-a21e
-c201
+A21E
+C201
 3201
-a21a
-d014
+A21A
+D014
 7004
 3040
 1200
@@ -688,7 +581,7 @@ d014
 2010
 2040
 8010
-				</textarea>
+</textarea>
 				</center>
 			</td>
 		</tr>
@@ -737,74 +630,23 @@ Fx65 - LD Vx, [I]         Restore Register: Read registers V0 through Vx from me
 </pre>
 </tt>
 </td></tr></table>
-
-<!--
-
-=== Alternate Syntax from: https://github.com/wernsey/chip8 ===
-
-<table><tr><td>
-<tt>
-<pre>
- |--------------------|-------------------|----------------------------------------------------|
- | Chip8 Instruction  |  Mnemonic         | Description                                        |
- |--------------------|-------------------|----------------------------------------------------|
- |  0nnn              |   `sys nnn`       | System Call                                        |
- |  00E0              |   `cls`           | Clear Screen                                       |
- |  00EE              |   `ret`           | Return                                             |
- |  1nnn              |   `jp addr`       | Jump to `addr`                                     |
- |  2nnn              |   `call addr`     | Call routine at `addr`                             |
- |  3nkk              |   `se Vn kk`      | Skip if `Vn` equals `kk`                           |
- |  4nkk              |   `sne Vn kk`     | Skip if `Vn` does not equal `kk`                   |
- |  5xy0              |   `se Vx Vy`      | Skip if `Vn` equals `Vy`                           |
- |  6xkk              |   `ld Vx, kk`     | Loads a literal value `kk` into `Vx`               |
- |  7nkk              |   `add Vn, kk`    | Add `kk` to register `Vx`                          |
- |  8xy0              |   `ld Vx, Vy`     | Loads register `Vy` into `Vx`                      |
- |  8xy1              |   `or Vx, Vy`     | Bitwise OR the value in `Vy` with register `Vx`    |
- |  8xy2              |   `and Vx, Vy`    | Bitwise AND the value in `Vy` with register `Vx`   |
- |  8xy3              |   `xor Vx, Vy`    | Bitwise XOR the value in `Vy` with register `Vx`   |
- |  8xy4              |   `add Vx, Vy`    | Add the value in `Vy` to register `Vx`             |
- |  8xy5              |   `sub Vx, Vy`    | Subtract the value in `Vy` from register `Vx`      |
- |  8xy6              |   `shr Vx [, Vy]` | Shift `Vx` to the right with the value in `Vy`     |
- |  8xy7              |   `subn Vx, Vy`   | Subtract the value in `Vy` from `Vx`, no carry     |
- |  8xyE              |   `shl Vx [, Vy]` | Shift `Vx` to the left with the value in `Vy`      |
- |  9xy0              |   `sne Vx Vy`     | Skip if `Vn` does not equal `Vy`                   |
- |  Annn              |   `ld I, nnn`     | Loads `nnn` into register `I`                      |
- |  Bnnn              |   `jp v0, addr`   | Jump to `v0 + addr`                                |
- |  Cnkk              |   `rnd Vn, kk`    | random number AND `kk` into `Vn`                   |
- |  Dxyn              |   `drw Vx, Vy, n` | Draw a sprite of `n` rows at `Vx,Vy`               |
- |  En9E              |   `skp Vn`        | Skip if key in `Vn` pressed                        |
- |  EnA1              |   `sknp Vn`       | Skip if key in `Vn` not pressed                    |
- |  Fn0A              |   `ld Vn, K`      | loads a key pressed into `Vn`                      |
- |  Fn1E              |   `add I, Vn`     | Add the value in `Vn` to register `I`              |
- |  Fx07              |   `ld Vx, DT`     | Loads the delay timer into register `Vx`           |
- |  Fx15              |   `delay Vx`      | Loads register `Vx` into the delay timer           |
- |  Fx18              |   `sound Vx`      | Loads register `Vx` into the sound timer           |
- |  Fx29              |   `hex Vx`        | Loads the 8x5 font sprite of `Vx` into `I`         |
- |  Fx30[^super]      |   `hexx Vx`       | Loads the 8x10 font sprite of `Vx` into `I`        |
- |  Fx33              |   `bcd Vx`        | Load BCD value of `Vx` into `I` to `I+2`           |
- |  Fx55              |   `stor Vx`       | Stores `V0` through `Vx` to the address in `I`     |
- |  Fx65              |   `rstr Vx`       | Restores `V0` through `Vx` from the address in `I` |
- |  Fx75[^super]      |   `storx Vx`      | Stores `V0` through `Vx` to the reserved space     |
- |  Fx85[^super]      |   `rstrx Vx`      | Restores `V0` through `Vx` from the reserved space |
- |  00Cn[^super]      |   `scd n`         | Scroll down `n` pixels                             |
- |  00FB[^super]      |   `scr`           | Scroll right                                       |
- |  00FC[^super]      |   `scl`           | Scroll Left                                        |
- |  00FD[^super]      |   `exit`          | Exits the SuperChip48 interpreter                  |
- |  00FE[^super]      |   `low`           | Low res mode                                       |
- |  00FF[^super]      |   `high`          | Enable 128x64 high-res mode                        |
- |--------------------|-------------------|----------------------------------------------------|
-
- [^super]: Denotes a Super Chip48 instruction.
-</pre>
-</tt>
-</td></tr></table>
--->
-
+<hr/>
 </center>
+
+Note: You can convert a binay <b>.ch8</b> file to hex for the Machine Code window with:<br/>
+<br/>
+$ od -v -tx1 -An filename<br/>
+<br/>
+For example:<br/>
+<br/>
+<tt>
+$ od -v -tx1 -An bin/chip8/games/Maze.ch8<br/>
+a2 1e c2 01 32 01 a2 1a d0 14 70 04 30 40 12 00<br/>
+60 00 71 04 31 20 12 00 12 18 80 40 20 10 20 40<br/>
+80 10
+</tt>
 
 </body>
-
-</center>
 
 </html>
 
