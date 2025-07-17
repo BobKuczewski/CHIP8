@@ -30,7 +30,7 @@ var last_index = -1;
 var random_sentence = "";
 
 function changed_format() {
-  fmt = document.getElementById ("format_to").value;
+  // fmt = document.getElementById ("format_to").value;
   // console.log ("Format changed to " + fmt);
 }
 
@@ -592,6 +592,8 @@ D014
 <table><tr><td>
 <tt>
 <pre>
+nnnn - DATA nnnn          Initialize a data word (all values in hex)
+
 0nnn - SYS addr           Jump to a machine code routine at nnn.
 00E0 - CLS                Clear the display.
 00EE - RET                Return from a subroutine.
