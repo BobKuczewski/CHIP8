@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>CHIP-8 Simulator</title>
+<meta charset="utf-8"/>
+</head>
+
+<style>
+.sel {
+  FONT-WEIGHT: bold;
+	COLOR: #000000;
+  BACKGROUND-COLOR: #ffff00;
+}
+</style>
+
+<script>
+function replaceAll ( s, t, r ) {
+	new_s = (s + " ").trim();
+	do {
+		last_s = (new_s + " ").trim();
+	  new_s = last_s.replace(t,r);
+	} while ( ! (new_s === last_s) );
+	return ( new_s );
+}
+
+var num_matched = 0;
+var full_text = "Four score and seven years ago ...";
+var last_index = -1;
+var random_sentence = "";
+
+function changed_format() {
+  // fmt = document.getElementById ("format_to").value;
+  // console.log ("Format changed to " + fmt);
+}
+
+function onload() {
+  // console.log ("Page loaded");
+}
+
+function get_b_comma_vx ( s ) {
+  result = []
+  comma = s.indexOf(",");
+  p1 = s.slice(0,comma).trim();
+  p2 = s.slice(comma+1).trim();
+  result.push (p1);
+  result.push (p2.slice(1));
+  // console.log ("get_vx_comma_b (" + s + ") = " + result );
+  return ( result );
+}
+
+function get_vx_comma_b ( s ) {
+  result = []
+  comma = s.indexOf(",");
+  p1 = s.slice(0,comma).trim();
+  p2 = s.slice(comma+1).trim();
+  result.push (p1.slice(1));
+  result.push (p2);
+  // console.log ("get_vx_comma_b (" + s + ") = " + result );
+  return ( result );
+}
+
+function get_vx_comma_vy ( s ) {
+  result = []
+  comma = s.indexOf(",");
+  p1 = s.slice(0,comma).trim();
+  p2 = s.slice(comma+1).trim();
+  result.push (p1.slice(1));
+  result.push (p2.slice(1));
+  // console.log ("get_vx_comma_vy (" + s + ") = " + result );
+  return ( result );
+}
+
+function assemble() {
+  // console.log ("Assemble code");
+  srctxt = document.getElementById ( "source" ).value;
+  // console.log ( "Text = " + srctxt );
+
+  // Normalize line endings and remove empty lines
+	text = replaceAll( srctxt, "\r", "\n");
+	while (text.indexOf("\n\n") >= 0) {
+		text = replaceAll(text, "\n\n", "\n");
+	}
+	// console.log ( text );
+	// Convert all white space to spaces
+	// text = text.replace(/\s+/g,' ');
+  // Remove all double spaces
+	while (text.indexOf("  ") >= 0) {
+		text = replaceAll(text, "  ", " ");
+	}
+	// console.log ( text );
+	// Split the text into an array of lines
+  lines = text.split("\n");
+	// console.log ( "lines=" + lines );
+
+  // Remove all comments and empty lines
+  new_lines = [];
+	for (l=0; l<lines.length; l++) {
+	  line = lines[l].toUpperCase().trim();
+	  if (line.indexOf(";") >= 0) {
+			// Remove the comment
+			line = line.substr(0,line.indexOf(";")).trim();
+	  }
+	  if (line.trim().length > 0) {
+			new_lines.push ( line.trim() );
+	  }
+	}
+	lines = new_lines;
+
+  // Compute the label addresses
+  label_dict = {};
+	for (l=0; l<lines.length; l++) {
+	  line = lines[l].toUpperCase().trim();
+	  if (line.indexOf(":") >= 0) {
+	    // Store the label and its location
+	    label = line.substr(0,line.indexOf(":"));
+	    label_dict[label] = ((2*l)+0x200).toString(16);
+	    while (label_dict[label].length < 3) {
+	      label_dict[label] = '0' + label_dict[label];
+	    }
+	    // Remove the label from the line of code for assembly
+	    lines[l] = lines[l].substr(line.indexOf(":")+1).trim();
+	  }
+	}
+	keys = Object.keys(label_dict);
+	// console.log ( "labels = " + keys );
+	for (l=0; l<lines.length; l++) {
+	  for (ki=0; ki<keys.length; ki++) {
+	    // console.log ( "Searching for " + keys[ki] );
+      lines[l] = replaceAll( lines[l].toUpperCase(), keys[ki], label_dict[keys[ki]]);
+	  }
+	}
+
+  // Clear the machine code window
+  mcwin = document.getElementById ( "machine" );
+  mcwin.value = "";
+	// Process the lines one by one
+	for (l=0; l<lines.length; l++) {
+	  line = lines[l].toUpperCase().trim();
+		// line = lines[l].replace(/\s+/g,''); // Remove all white space
+	  if (line.indexOf(";") >= 0) {
+			// Remove the comment
+			line = line.substr(0,line.indexOf(";")).trim();
+	  }
+	  if (line.length > 0) {
+		  if (line.indexOf(":") >= 0) {
+				// Throw away the labels for now
+				line = line.substr(line.indexOf(":")+1).trim();
+		  }
+		  if (line.slice(0,5) == "DATA ") {
+				mcwin.value += line.slice(5).trim() + "\n";
+		  } else if (line.slice(0,4) == "SYS ") {
+				mcwin.value += "0" + line.slice(4).trim() + "\n";
+		  } else if (line.slice(0,3) == "CLS") {
+				mcwin.value += "00E0\n";
+		  } else if (line.slice(0,3) == "RET") {
+				mcwin.value += "00EE\n";
+		  } else if (line.slice(0,3) == "JP ") {
+				// JP can take the following forms:
+				//   JP nnn    -->  1nnn
+				//   JP V0,nnn -->  Bnnn
+				if (line.indexOf(",") >= 0) {
+					mcwin.value += "B" + line.slice(line.indexOf(",")+1).trim() + "\n";
+			  } else {
+					mcwin.value += "1" + line.slice(2).trim() + "\n";
+			  }
+		  } else if (line.slice(0,5) == "CALL ") {
+				// CALL takes the following form:
+				//   CALL nnn
+				mcwin.value += "2" + line.slice(5).trim() + "\n";
+		  } else if (line.slice(0,3) == "SE ") {
+				// SE (Skip when Equal) can take the following forms:
+				//   SE Vx,byte -> 3xbb
+				//   SE Vx,Vy   -> 5xy0
+				if (line.split(",")[1].indexOf("V") < 0) {
+				  // SE Vx,byte -> 3xbb
+				  vb = get_vx_comma_b ( line.slice(3) );
+					mcwin.value += "3" + vb[0] + vb[1] + "\n";
+				} else {
+					// SE Vx,Vy   -> 5xy0
+				  vv = get_vx_comma_vy ( line.slice(3) );
+					mcwin.value += "5" + vv[0] + vv[1] + "0" + "\n";
+			  }
+		  } else if (line.slice(0,4) == "SNE ") {
+				// SNE (Skip when Not Equal) can take the following forms:
+				//   SNE Vx,byte -> 4xbb
+				//   SNE Vx,Vy   -> 9xy0
+				if (line.split(",")[1].indexOf("V") < 0) {
+				  // SNE Vx,byte -> 4xbb
+				  vb = get_vx_comma_b ( line.slice(3) );
+					mcwin.value += "4" + vb[0] + vb[1] + "\n";
+				} else {
+					// SNE Vx,Vy   -> 9xy0
+				  vv = get_vx_comma_vy ( line.slice(3) );
+					mcwin.value += "9" + vv[0] + vv[1] + "0" + "\n";
+			  }
+		  } else if (line.slice(0,3) == "LD ") {
+				// LD (Load) can take the following forms:
+				//   LD Vx,byte -> 6xbb
+				//   LD Vx,Vy   -> 8xy0
+				//   LD I,nnn   -> Annn
+				//   LD Vx,DT   -> Fx07
+				//   LD Vx,K    -> Fx0A
+				//   LD DT,Vx   -> Fx15
+				//   LD ST,Vx   -> Fx18
+				//   LD F,Vx    -> Fx29
+				//   LD B,Vx    -> Fx33
+				//   LD [I],Vx  -> Fx55
+				//   LD Vx,[I]  -> Fx65
+				pars = line.slice(3).trim().split(",");
+				pars[0] = pars[0].trim();
+				pars[1] = pars[1].trim();
+				// Handle the easy ones first
+				if (pars[0] == "I") {
+				  // LD I,nnn   -> Annn
+					mcwin.value += "A" + pars[1].trim() + "\n";
+				} else if (pars[0] == "DT") {
+				  // LD DT,Vx   -> Fx15
+					mcwin.value += "F" + pars[1].slice(1).trim() + "15\n";
+				} else if (pars[0] == "ST") {
+					// LD ST,Vx   -> Fx18
+					mcwin.value += "F" + pars[1].slice(1).trim() + "18\n";
+				} else if (pars[0] == "F") {
+					// LD F,Vx    -> Fx29
+					mcwin.value += "F" + pars[1].slice(1).trim() + "29\n";
+				} else if (pars[0] == "B") {
+					// LD B,Vx    -> Fx33
+					mcwin.value += "F" + pars[1].slice(1).trim() + "33\n";
+				} else if (pars[0] == "[I]") {
+					// LD [I],Vx  -> Fx55
+					mcwin.value += "F" + pars[1].slice(1).trim() + "55\n";
+				} else if (pars[1] == "DT") {
+				  // LD Vx,DT   -> Fx07
+					mcwin.value += "F" + pars[0].slice(1).trim() + "07\n";
+				} else if (pars[1] == "K") {
+				  // LD Vx,K    -> Fx0A
+				} else if (pars[1] == "[I]") {
+					// LD Vx,[I]  -> Fx65
+					mcwin.value += "F" + pars[0].slice(1).trim() + "65\n";
+				} else {
+				  if (line.split(",")[1].indexOf("V") < 0) {
+						// LD Vx,byte -> 6xbb
+						vb = get_vx_comma_b ( line.slice(3) );
+					  mcwin.value += "6" + vb[0] + vb[1] + "\n";
+				  } else {
+						// LD Vx,Vy   -> 8xy0
+						vv = get_vx_comma_vy ( line.slice(3) );
+						mcwin.value += "8" + vv[0] + vv[1] + "0" + "\n";
+					}
+				}
+		  } else if (line.slice(0,4) == "ADD ") {
+				// ADD can take the following forms:
+				//   ADD Vx,byte -> 7xbb
+				//   ADD Vx,Vy   -> 8xy4
+				//   ADD I,Vx    -> Fx1E
+				pars = line.slice(3).trim().split(",");
+				pars[0] = pars[0].trim();
+				pars[1] = pars[1].trim();
+				if (pars[0] == "I") {
+				  // ADD I,Vx    -> Fx1E
+					mcwin.value += "F" + pars[1].slice(1).trim() + "1E\n";
+			  } else {
+				  if (pars[1].indexOf("V") < 0) {
+						// ADD Vx,byte -> 7xbb
+						vb = get_vx_comma_b ( line.slice(3) );
+					  mcwin.value += "7" + vb[0] + vb[1] + "\n";
+				  } else {
+				  	// ADD Vx,Vy   -> 8xy0
+						vv = get_vx_comma_vy ( line.slice(3) );
+					  mcwin.value += "8" + vv[0] + vv[1] + "4" + "\n";
+					}
+			  }
+		  } else if (line.slice(0,3) == "OR ") {
+				vv = get_vx_comma_vy ( line.slice(2).trim() );
+			  mcwin.value += "8" + vv[0] + vv[1] + "1" + "\n";
+		  } else if (line.slice(0,4) == "AND ") {
+				vv = get_vx_comma_vy ( line.slice(3).trim() );
+			  mcwin.value += "8" + vv[0] + vv[1] + "2" + "\n";
+		  } else if (line.slice(0,4) == "XOR ") {
+				vv = get_vx_comma_vy ( line.slice(3).trim() );
+			  mcwin.value += "8" + vv[0] + vv[1] + "3" + "\n";
+		  } else if (line.slice(0,4) == "SUB ") {
+				vv = get_vx_comma_vy ( line.slice(3).trim() );
+			  mcwin.value += "8" + vv[0] + vv[1] + "5" + "\n";
+		  } else if (line.slice(0,4) == "SHR ") {
+				if (line.indexOf(",") >= 0) {
+				  // SHR Vx,Vy
+				  vv = get_vx_comma_vy ( line.slice(3).trim() );
+				  if (vv[0].length <= 0) {
+						vv[0] = "?";
+				  }
+				} else {
+				  // SHR Vx
+				  vv = [line.slice(3).trim()[1],"1"];
+				}
+			  mcwin.value += "8" + vv[0] + vv[1] + "6" + "\n";
+		  } else if (line.slice(0,5) == "SUBN ") {
+				vv = get_vx_comma_vy ( line.slice(4).trim() );
+			  mcwin.value += "8" + vv[0] + vv[1] + "7" + "\n";
+		  } else if (line.slice(0,4) == "SHL ") {
+				if (line.indexOf(",") >= 0) {
+				  // SHL Vx,Vy
+				  vv = get_vx_comma_vy ( line.slice(3).trim() );
+				  if (vv[0].length <= 0) {
+						vv[0] = "?";
+				  }
+				} else {
+				  // SHL Vx
+				  vv = [line.slice(3).trim()[1],"1"];
+				}
+			  mcwin.value += "8" + vv[0] + vv[1] + "E" + "\n";
+		  } else if (line.slice(0,4) == "RND ") {
+				vb = get_vx_comma_b ( line.slice(3) );
+			  mcwin.value += "C" + vb[0] + vb[1] + "\n";
+		  } else if (line.slice(0,4) == "DRW ") {
+		  	pars = line.slice(3).split(",");
+		  	pars[0] = pars[0].trim();
+		  	pars[1] = pars[1].trim();
+		  	pars[2] = pars[2].trim();
+			  mcwin.value += "D" + pars[0][1] + pars[1][1] + pars[2][0] + "\n";
+		  } else if (line.slice(0,4) == "SKP ") {
+		  	vx = line.slice(3).trim();
+			  mcwin.value += "E" + vx[1] + "9E" + "\n";
+		  } else if (line.slice(0,5) == "SKNP ") {
+		  	vx = line.slice(4).trim();
+			  mcwin.value += "E" + vx[1] + "A1" + "\n";
+		  } else {
+				mcwin.value += "[??]" + line + "\n";
+		  }
+		}
+  }
+}
+
+function disassemble() {
+  // console.log ("Disassemble code");
+  bintxt = document.getElementById ( "machine" ).value;
+  // console.log ( "Text = " + bintxt );
+  opts = document.getElementById ( "disassem_opts" ).value;
+  // console.log ( "Disassemble with options: " + opts );
+
+  // Normalize line endings and remove empty lines
+	text = replaceAll( bintxt, "\r", "\n");
+	while (text.indexOf("\n\n") >= 0) {
+		text = replaceAll(text, "\n\n", "\n");
+	}
+	// Convert to upper case
+	text = "" + text.toUpperCase();
+	// Remove all line endings
+	while (text.indexOf("\n") >= 0) {
+		text = replaceAll(text, "\n", "");
+	}
+	// Remove all spaces
+	while (text.indexOf(" ") >= 0) {
+		text = replaceAll(text, " ", "");
+	}
+	// Split by 4 digits per instruction
+  lines = [];
+  while (text.length > 0) {
+		lines.push ( text.slice(0,4) );
+		text = text.slice(4)
+  }
+
+  // Clear the source window
+  document.getElementById ( "source" ).value = "";
+	// Process the lines one by one
+	for (l=0; l<lines.length; l++) {
+
+		if (opts.indexOf("L") >= 0) {
+		  // document.getElementById ( "source" ).value += "L"+((l*2)+0x200).toString(16).toUpperCase() + ": ";
+		  document.getElementById ( "source" ).value += ((l*2)+0x200).toString(16).toUpperCase() + ": ";
+		}
+		if (opts.indexOf("H") >= 0) {
+		  document.getElementById ( "source" ).value += lines[l] + "  ";
+		}
+
+		// #### : 00E0 00EE
+	  if (lines[l] == "00E0") {
+		  document.getElementById ( "source" ).value += "CLS" + "\n";
+		} else if (lines[l] == "00EE") {
+		  document.getElementById ( "source" ).value += "RET" + "\n";
+
+		// #nnn : 0 1 2 A B
+		} else if (lines[l][0] == "0") {
+		  document.getElementById ( "source" ).value += "SYS " + lines[l].slice(1) + "\n";
+		} else if (lines[l][0] == "1") {
+		  // document.getElementById ( "source" ).value += "JP L" + lines[l].slice(1) + "\n";
+		  document.getElementById ( "source" ).value += "JP " + lines[l].slice(1) + "\n";
+		} else if (lines[l][0] == "2") {
+		  // document.getElementById ( "source" ).value += "CALL L" + lines[l].slice(1) + "\n";
+		  document.getElementById ( "source" ).value += "CALL " + lines[l].slice(1) + "\n";
+		} else if (lines[l][0] == "A") {
+		  document.getElementById ( "source" ).value += "LD I," + lines[l].slice(1) + "\n";
+		} else if (lines[l][0] == "B") {
+		  document.getElementById ( "source" ).value += "JP V0," + lines[l].slice(1) + "\n";
+
+		// #nkk or #xkk : 3 4 6 7 C
+		} else if (lines[l][0] == "3") {
+		  document.getElementById ( "source" ).value += "SE V" + lines[l][1] + "," + lines[l].slice(2) + "\n";
+		} else if (lines[l][0] == "4") {
+		  document.getElementById ( "source" ).value += "SNE V" + lines[l][1] + "," + lines[l].slice(2) + "\n";
+		} else if (lines[l][0] == "6") {
+		  document.getElementById ( "source" ).value += "LD V" + lines[l][1] + "," + lines[l].slice(2) + "\n";
+		} else if (lines[l][0] == "7") {
+		  document.getElementById ( "source" ).value += "ADD V" + lines[l][1] + "," + lines[l].slice(2) + "\n";
+		} else if (lines[l][0] == "C") {
+		  document.getElementById ( "source" ).value += "RND V" + lines[l][1] + "," + lines[l].slice(2) + "\n";
+
+		// #xy# : 5, 8, 9, D
+		} else if (lines[l][0] == "5") {
+		  if (lines[l][3] == "0") {
+			  document.getElementById ( "source" ).value += "SE V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else {
+			  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
+			}
+		} else if (lines[l][0] == "8") {
+		  if (lines[l][3] == "0") {
+			  document.getElementById ( "source" ).value += "LD V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else if (lines[l][3] == "1") {
+			  document.getElementById ( "source" ).value += "OR V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else if (lines[l][3] == "2") {
+			  document.getElementById ( "source" ).value += "AND V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else if (lines[l][3] == "3") {
+			  document.getElementById ( "source" ).value += "XOR V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else if (lines[l][3] == "4") {
+			  document.getElementById ( "source" ).value += "ADD V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else if (lines[l][3] == "5") {
+			  document.getElementById ( "source" ).value += "SUB V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else if (lines[l][3] == "6") {
+			  document.getElementById ( "source" ).value += "SHR V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else if (lines[l][3] == "7") {
+			  document.getElementById ( "source" ).value += "SUBN V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else if (lines[l][3] == "E") {
+			  document.getElementById ( "source" ).value += "SHL V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else {
+			  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
+			}
+		} else if (lines[l][0] == "9") {
+		  if (lines[l][3] == "0") {
+			  document.getElementById ( "source" ).value += "SNE V" + lines[l][1] + ",V" + lines[l][2] + "\n";
+			} else {
+			  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
+			}
+		} else if (lines[l][0] == "D") {
+		  document.getElementById ( "source" ).value += "DRW V" + lines[l][1] + ",V" + lines[l][2] + "," + lines[l][3] + "\n";
+
+		// #x## : E, F
+		} else if (lines[l][0] == "E") {
+		  if (lines[l].slice(2) == "9E") {
+			  document.getElementById ( "source" ).value += "SKP V" + lines[l][1] + "\n";
+		  } else if (lines[l].slice(2) == "A1") {
+			  document.getElementById ( "source" ).value += "SKNP V" + lines[l][1] + "\n";
+			} else {
+			  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
+			}
+		} else if (lines[l][0] == "F") {
+		  if (lines[l].slice(2) == "07") {
+			  document.getElementById ( "source" ).value += "LD V" + lines[l][1] + ",DT\n";
+		  } else if (lines[l].slice(2) == "0A") {
+			  document.getElementById ( "source" ).value += "LD V" + lines[l][1] + ",K\n";
+		  } else if (lines[l].slice(2) == "15") {
+			  document.getElementById ( "source" ).value += "LD DT,V" + lines[l][1] + "\n";
+		  } else if (lines[l].slice(2) == "18") {
+			  document.getElementById ( "source" ).value += "LD ST,V" + lines[l][1] + "\n";
+		  } else if (lines[l].slice(2) == "1E") {
+			  document.getElementById ( "source" ).value += "ADD I,V" + lines[l][1] + "\n";
+		  } else if (lines[l].slice(2) == "29") {
+			  document.getElementById ( "source" ).value += "LD F,V" + lines[l][1] + "\n";
+		  } else if (lines[l].slice(2) == "33") {
+			  document.getElementById ( "source" ).value += "LD B,V" + lines[l][1] + "\n";
+		  } else if (lines[l].slice(2) == "55") {
+			  document.getElementById ( "source" ).value += "LD [I],V" + lines[l][1] + "\n";
+		  } else if (lines[l].slice(2) == "65") {
+			  document.getElementById ( "source" ).value += "LD V" + lines[l][1] + ",[I]\n";
+			} else {
+			  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
+			}
+
+		// Unknown
+		} else {
+		  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
+		}
+  }
+}
+
+saved_text = "";
+function save() {
+  saved_text = document.getElementById ( "source" ).value;
+}
+
+function restore() {
+  document.getElementById ( "source" ).value = saved_text;
+}
+
+function run() {
+}
+
+function step1() {
+  // Could not use the name "step" for some reason
+}
+
+function stop() {
+}
+
+</script>
+
+<body bgcolor="lightblue" onload="onload()">
+<center>
+
+<span id="title"><b>CHIP-8 Simulator</b></span>
+<p/>
+<center>
+<table>
+	<tr>
+	  <!--
+		<td>
+			<select id="assem_opts" onchange="changed_format()">
+			<option value="H" selected>Plain Hex</option>
+			<option value="I">Intel Hex</option>
+			</select>
+		</td>
+		-->
+		<td>
+			<input type="button" name="assem" value="Assemble" onclick="assemble();"></input>
+		</td>
+		<td>
+			<input type="button" name="save" value="Save" onclick="save();"></input>
+		</td>
+		<td>
+			<input type="button" name="restore" value="Restore" onclick="restore();"></input>
+		</td>
+		<td>
+		  &nbsp; &nbsp; &nbsp; &nbsp; 
+		  <input type="button" name="disassem" value="Disassemble as" onclick="disassemble();"></input>
+		</td>
+		<td>
+			<select id="disassem_opts" onchange="changed_format()">
+			<option value="S">Src</option>
+			<option value="LS" selected>L+S</option> -->
+			<option value="HS">H+S</option> -->
+			<option value="LHS">LHS</option> -->
+			</select>
+		</td>
+		<td>
+		  &nbsp; &nbsp; &nbsp; &nbsp; 
+			<input type="button" name="run"  value="Run"  onclick="run();"></input>
+			<input type="button" name="step1" value="Step" onclick="step1();"></input>
+			<input type="button" name="stop" value="Stop" onclick="stop();"></input>
+		</td>
+	</tr>
+</table>
+<center>
+<table width="100%" style="padding:10px; border-spacing:2px; border:4px solid black; background-color:#dddddd; text-align:left; font-family: Arial, Helvetica, sans-serif; font-size: 14px;" >
+  <colgroup>
+		<col>
+		<col>
+  </colgroup>
+  <thead>
+		<tr>
+		  <th style="text-align:center; padding:5px; border-spacing:2px; border:2px solid black; background-color:#aaffff;">Source Code</th>
+		  <th style="text-align:center; padding:5px; border-spacing:2px; border:2px solid black; background-color:#aaffff;">Machine Code</th>
+		  <th style="text-align:center; padding:5px; border-spacing:2px; border:2px solid black; background-color:#aaffff;">Chip-8 Virtual Machine</th>
+		</tr>
+  </thead>
+	<tbody>
+  	<tr>
+		  <td valign="top">
+				<center>
+				<textarea id="source" rows="27" cols="50"
+				   autocomplete="off" autocorrect="off"
+				   autocapitalize="off" spellcheck="false">
+;===========================;
+; Generate a maze in CHIP-8 ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;   V2 used for random bit  ;
+;===========================;
+
+TOP: LD I,R3      ; Load sprite address
+     RND V2,01    ; Put random bit in V2
+     SE V2,01     ; Skip if V2=1 (random)
+     LD I,R1      ; Load a different sprite
+     DRW V0,V1,4  ; Draw at (V0,V1) 4 rows
+     ADD V0,04    ; Add 4 to x coord
+     SE V0,40     ; Skip if at end of V0
+     JP TOP       ; Go back to top
+     LD V0,00     ; At end so go back x=0
+     ADD V1,04    ; Add 4 to y
+     SE V1,20     ; Skip if end of y (done)
+     JP TOP       ; Go back to top
+END: JP END       ; Stay here ... forever
+
+R1:  DATA 8040    ; Image data
+R2:  DATA 2010    ; Image data
+R3:  DATA 2040    ; Image data
+R4:  DATA 8010    ; Image data</textarea>
+
+				</center>
+			</td>
+
+		  <td valign="top">
+				<center>
+				<!-- Generate hex from binary ch8 file with: od -v -tx1 -An filename -->
+
+				<!-- $ od -v -tx1 -An bin/chip8/games/Maze.ch8
+							 a2 1e c2 01 32 01 a2 1a d0 14 70 04 30 40 12 00
+							 60 00 71 04 31 20 12 00 12 18 80 40 20 10 20 40
+							 80 10 -->
+
+				<textarea id="machine" rows="27" cols="5"
+				   autocomplete="off" autocorrect="off"
+				   autocapitalize="off" spellcheck="false">
+A21E
+C201
+3201
+A21A
+D014
+7004
+3040
+1200
+6000
+7104
+3120
+1200
+1218
+8040
+2010
+2040
+8010
+</textarea>
+				</center>
+			</td>
+
+		  <td valign="top">
+		    <table>
+		    <tr><td>
+				<center>
+					<!--div id="tdiv" style="resize: both; overflow: auto;"--> 
+					<div id="tdiv"> 
+					<canvas
+						id="drawing_area"
+						width="400" height="200"
+						style="margin:2px; padding:2px; border:2px solid #cccccc; resize: both; overflow: auto;"> 
+						<!-- Use: style="margin:2px; padding:2px; border:2px solid #cccccc; display:none;" -->
+						Your browser does not support the HTML5 canvas tag.
+					</canvas>
+					</div>
+				</center>
+				</td></tr>
+		    <tr><td>
+				<center>
+				Run Controls
+				</center>
+				</td></tr>
+				</table>
+			</td>
+		</tr>
+	</tbody>
+</table>
+
+
+
+
+<p/>
+=== Assembler Syntax === <!-- http://devernay.free.fr/hacks/chip8/C8TECH10.HTM -->
+<table><tr><td>
+<tt>
+<pre>
+Code   Assembly           Description - All numbers are hexadecimal
+----   --------           -----------------------------------------
+       lbl:               A label - must not match any other string in the program!
+nnnn - DATA nnnn          Initialize a data word (all values in hex)
+
+0nnn - SYS addr           Jump to a machine code routine at nnn.
+00E0 - CLS                Clear the display.
+00EE - RET                Return from a subroutine.
+1nnn - JP addr            Jump to location nnn.
+2nnn - CALL addr          Call subroutine at nnn.
+3xkk - SE Vx, byte        Skip If Equal Immediate: Skip next instruction if Vx = kk.
+4xkk - SNE Vx, byte       Skip If Not Equal Immediate: Skip next instruction if Vx != kk.
+5xy0 - SE Vx, Vy          Skip If Equal Register: Skip next instruction if Vx = Vy.
+6xkk - LD Vx, byte        Load Immediate: Set Vx = kk.
+7xkk - ADD Vx, byte       Add Immediate: Set Vx = Vx + kk.
+8xy0 - LD Vx, Vy          Load Register: Set Vx = Vy.
+8xy1 - OR Vx, Vy          Or Register: Set Vx = Vx OR Vy.
+8xy2 - AND Vx, Vy         And Register: Set Vx = Vx AND Vy.
+8xy3 - XOR Vx, Vy         XOR Register: Set Vx = Vx XOR Vy.
+8xy4 - ADD Vx, Vy         Add Register: Set Vx = Vx + Vy, set VF = carry.
+8xy5 - SUB Vx, Vy         Sub Register: Set Vx = Vx - Vy, set VF = NOT borrow.
+8xy6 - SHR Vx {, Vy}      Shift Right: Set Vx = Vx SHR 1.
+8xy7 - SUBN Vx, Vy        Sub Negative Register: Set Vx = Vy - Vx, set VF = NOT borrow.
+8xyE - SHL Vx {, Vy}      Shift Left: Set Vx = Vx SHL 1.
+9xy0 - SNE Vx, Vy         Skip If Not Equal: Skip next instruction if Vx != Vy.
+Annn - LD I, addr         Load I Immediate: Set I = nnn.
+Bnnn - JP V0, addr        Jump to V0 with offset nnn.
+Cxkk - RND Vx, byte       Rand: Set Vx to a random number (0 to 255) AND byte value
+Dxyn - DRW Vx, Vy, n      Draw: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+Ex9E - SKP Vx             Skip if Key[Vx]: Skip next instruction if key with the value of Vx is pressed.
+ExA1 - SKNP Vx            Skip if !Key[Vx]: Skip next instruction if key with the value of Vx is not pressed.
+Fx07 - LD Vx, DT          Load Vx from Delay Timer: Set Vx = delay timer value.
+Fx0A - LD Vx, K           Load Vx from next Key: Wait for a key press, store the value of the key in Vx.
+Fx15 - LD DT, Vx          Load Delay Timer from Vx: Set delay timer = Vx.
+Fx18 - LD ST, Vx          Load Sound Timer from Vx: Set sound timer = Vx.
+Fx1E - ADD I, Vx          Add Vx to I: Set I = I + Vx.
+Fx29 - LD F, Vx           Load I from Sprite location: Set I = location of sprite for digit Vx.
+Fx33 - LD B, Vx           Load BCD from X into Memory[I]: Store BCD representation of Vx in memory locations I, I+1, and I+2.
+Fx55 - LD [I], Vx         Save Registers: Store registers V0 through Vx in memory starting at location I.
+Fx65 - LD Vx, [I]         Restore Register: Read registers V0 through Vx from memory starting at location I.
+</pre>
+</tt>
+</td></tr></table>
+<hr/>
+</center>
+
+Note: You can convert a binay <b>.ch8</b> file to hex for the Machine Code window with:<br/>
+<br/>
+$ od -v -tx1 -An filename<br/>
+<br/>
+For example:<br/>
+<br/>
+<tt>
+$ od -v -tx1 -An bin/chip8/games/Maze.ch8<br/>
+a2 1e c2 01 32 01 a2 1a d0 14 70 04 30 40 12 00<br/>
+60 00 71 04 31 20 12 00 12 18 80 40 20 10 20 40<br/>
+80 10
+</tt>
+
+</body>
+
+</html>
+
