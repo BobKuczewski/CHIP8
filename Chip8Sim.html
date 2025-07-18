@@ -15,6 +15,7 @@
 </style>
 
 <script>
+
 function replaceAll ( s, t, r ) {
 	new_s = (s + " ").trim();
 	do {
@@ -24,18 +25,17 @@ function replaceAll ( s, t, r ) {
 	return ( new_s );
 }
 
-var num_matched = 0;
-var full_text = "Four score and seven years ago ...";
-var last_index = -1;
-var random_sentence = "";
+function onload() {
+  // console.log ("Page loaded");
+  da = document.getElementById ("drawing_area");
+  ctxt = da.getContext('2d');
+  ctxt.fillStyle = 'black';
+  ctxt.fillRect(0, 0, da.width, da.height);
+}
 
 function changed_format() {
   // fmt = document.getElementById ("format_to").value;
   // console.log ("Format changed to " + fmt);
-}
-
-function onload() {
-  // console.log ("Page loaded");
 }
 
 function get_b_comma_vx ( s ) {
@@ -633,11 +633,13 @@ D014
 			</td>
 
 		  <td valign="top">
+		    <center>
 		    <table>
 		    <tr><td>
 				<center>
 					<!--div id="tdiv" style="resize: both; overflow: auto;"--> 
-					<div id="tdiv"> 
+					<div id="tdiv">
+					<center>
 					<canvas
 						id="drawing_area"
 						width="400" height="200"
@@ -645,15 +647,17 @@ D014
 						<!-- Use: style="margin:2px; padding:2px; border:2px solid #cccccc; display:none;" -->
 						Your browser does not support the HTML5 canvas tag.
 					</canvas>
+					</center>
 					</div>
 				</center>
 				</td></tr>
 		    <tr><td>
 				<center>
-				Run Controls
+				CHIP8 Status and Control
 				</center>
 				</td></tr>
 				</table>
+		    </center>
 			</td>
 		</tr>
 	</tbody>
