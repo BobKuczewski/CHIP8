@@ -732,7 +732,7 @@ D014
 				</center>
 			</td>
 
-		  <td valign="top">
+		  <td valign="top"> <!-- Start of VIRTUAL MACHINE -->
 		    <center>
 		    <table>
 		    <tr><td>
@@ -753,69 +753,85 @@ D014
 				</td></tr>
 		    <tr><td>
 				<center>
-				<table>
-				<tr>
-				<td style="vertical-align: top;">
-				<table class="mem">
-				  <tr class="mem"><td class="mem" id="A0"></td><td class="mem"><input type="text" id="M0" class="mem" name="M0" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="A1"></td><td class="mem"><input type="text" id="M1" class="mem" name="M1" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="A2"></td><td class="mem"><input type="text" id="M2" class="mem" name="M2" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="A3"></td><td class="mem"><input type="text" id="M3" class="mem" name="M3" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="A4"></td><td class="mem"><input type="text" id="M4" class="mem" name="M4" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="A5"></td><td class="mem"><input type="text" id="M5" class="mem" name="M5" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="A6"></td><td class="mem"><input type="text" id="M6" class="mem" name="M6" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="A7"></td><td class="mem"><input type="text" id="M7" class="mem" name="M7" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="A8"></td><td class="mem"><input type="text" id="M8" class="mem" name="M8" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="A9"></td><td class="mem"><input type="text" id="M9" class="mem" name="M9" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="AA"></td><td class="mem"><input type="text" id="MA" class="mem" name="MA" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="AB"></td><td class="mem"><input type="text" id="MB" class="mem" name="MB" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="AC"></td><td class="mem"><input type="text" id="MC" class="mem" name="MC" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="AD"></td><td class="mem"><input type="text" id="MD" class="mem" name="MD" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="AE"></td><td class="mem"><input type="text" id="ME" class="mem" name="ME" size="4"></td></tr>
-				  <tr class="mem"><td class="mem" id="AF"></td><td class="mem"><input type="text" id="MF" class="mem" name="MF" size="4"></td></tr>
-				</table>
-				</td>
-				<td style="vertical-align: top;">
-				<table class="reg">
-				  <tr class="reg"><td class="reg">V0</td><td class="reg"><input type="text" id="V0" class="reg" name="V0" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">V1</td><td class="reg"><input type="text" id="V1" class="reg" name="V1" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">V2</td><td class="reg"><input type="text" id="V2" class="reg" name="V2" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">V3</td><td class="reg"><input type="text" id="V3" class="reg" name="V3" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">V4</td><td class="reg"><input type="text" id="V4" class="reg" name="V4" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">V5</td><td class="reg"><input type="text" id="V5" class="reg" name="V5" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">V6</td><td class="reg"><input type="text" id="V6" class="reg" name="V6" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">V7</td><td class="reg"><input type="text" id="V7" class="reg" name="V7" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">V8</td><td class="reg"><input type="text" id="V8" class="reg" name="V8" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">V9</td><td class="reg"><input type="text" id="V9" class="reg" name="V9" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">VA</td><td class="reg"><input type="text" id="VA" class="reg" name="VA" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">VB</td><td class="reg"><input type="text" id="VB" class="reg" name="VB" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">VC</td><td class="reg"><input type="text" id="VC" class="reg" name="VC" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">VD</td><td class="reg"><input type="text" id="VD" class="reg" name="VD" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">VE</td><td class="reg"><input type="text" id="VE" class="reg" name="VE" size="2"></td></tr>
-				  <tr class="reg"><td class="reg">VF</td><td class="reg"><input type="text" id="VF" class="reg" name="VF" size="2"></td></tr>
-				</table>
-				</td>
-				<td style="vertical-align: top;">
-					<table>
-						<tr><td>
-							<table class="reg">
-								<tr class="reg"><td class="reg">PC</td><td class="reg"><input type="text" id="PC" class="reg" name="PC" size="4"></td></tr>
-							</table>
-					  </td></tr>
-						<tr><td>
-							<table class="reg">
-								<tr class="reg"><td class="reg">[ I ]</td><td class="reg"><input type="text" id="[I]" class="reg" name="[I]" size="4"></td></tr>
-							</table>
-					  </td></tr>
-					</table>
-				</td>
-				</tr>
-				</table>
+				<table> <!-- Start of Virtual Machine Controls -->
+					<tr>
+					<!-- Memory Controls -->
+					<td>
+					<center>
+					  <input type="button" name="memup"  value="⇧"  onclick="mem_top = 0x0000; update_display();"></input></br>
+					  <input type="button" name="memup"  value="↟"  onclick="mem_top = Math.max(0,mem_top-16); update_display();"></input></br>
+					  <input type="button" name="memup"  value="↑"  onclick="mem_top = Math.max(0,mem_top-2); update_display();"></input></br>
+					  <input type="button" name="memup"  value="⌂"  onclick="mem_top = 0x0200; update_display();"></input></br>
+					  <input type="button" name="memdn"  value="↓"  onclick="mem_top = Math.min(0xffe0,mem_top+2); update_display();"></input></br>
+					  <input type="button" name="memdn"  value="⇓"  onclick="mem_top = Math.min(0xffe0,mem_top+16); update_display();"></input></br>
+					  <input type="button" name="memdn"  value="⇩"  onclick="mem_top = 0xffe0; update_display();"></input></br>
+					</center>
+					</td>
+					<!-- Memory table -->
+					<td style="vertical-align: top;">
+						<table class="mem">
+							<tr class="mem"><td class="mem" id="A0"></td><td class="mem"><input type="text" id="M0" class="mem" name="M0" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="A1"></td><td class="mem"><input type="text" id="M1" class="mem" name="M1" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="A2"></td><td class="mem"><input type="text" id="M2" class="mem" name="M2" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="A3"></td><td class="mem"><input type="text" id="M3" class="mem" name="M3" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="A4"></td><td class="mem"><input type="text" id="M4" class="mem" name="M4" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="A5"></td><td class="mem"><input type="text" id="M5" class="mem" name="M5" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="A6"></td><td class="mem"><input type="text" id="M6" class="mem" name="M6" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="A7"></td><td class="mem"><input type="text" id="M7" class="mem" name="M7" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="A8"></td><td class="mem"><input type="text" id="M8" class="mem" name="M8" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="A9"></td><td class="mem"><input type="text" id="M9" class="mem" name="M9" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="AA"></td><td class="mem"><input type="text" id="MA" class="mem" name="MA" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="AB"></td><td class="mem"><input type="text" id="MB" class="mem" name="MB" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="AC"></td><td class="mem"><input type="text" id="MC" class="mem" name="MC" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="AD"></td><td class="mem"><input type="text" id="MD" class="mem" name="MD" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="AE"></td><td class="mem"><input type="text" id="ME" class="mem" name="ME" size="4"></td></tr>
+							<tr class="mem"><td class="mem" id="AF"></td><td class="mem"><input type="text" id="MF" class="mem" name="MF" size="4"></td></tr>
+						</table>
+					</td>
+					<!-- Register table -->
+					<td style="vertical-align: top;">
+						<table class="reg">
+							<tr class="reg"><td class="reg">V0</td><td class="reg"><input type="text" id="V0" class="reg" name="V0" size="2"></td></tr>
+							<tr class="reg"><td class="reg">V1</td><td class="reg"><input type="text" id="V1" class="reg" name="V1" size="2"></td></tr>
+							<tr class="reg"><td class="reg">V2</td><td class="reg"><input type="text" id="V2" class="reg" name="V2" size="2"></td></tr>
+							<tr class="reg"><td class="reg">V3</td><td class="reg"><input type="text" id="V3" class="reg" name="V3" size="2"></td></tr>
+							<tr class="reg"><td class="reg">V4</td><td class="reg"><input type="text" id="V4" class="reg" name="V4" size="2"></td></tr>
+							<tr class="reg"><td class="reg">V5</td><td class="reg"><input type="text" id="V5" class="reg" name="V5" size="2"></td></tr>
+							<tr class="reg"><td class="reg">V6</td><td class="reg"><input type="text" id="V6" class="reg" name="V6" size="2"></td></tr>
+							<tr class="reg"><td class="reg">V7</td><td class="reg"><input type="text" id="V7" class="reg" name="V7" size="2"></td></tr>
+							<tr class="reg"><td class="reg">V8</td><td class="reg"><input type="text" id="V8" class="reg" name="V8" size="2"></td></tr>
+							<tr class="reg"><td class="reg">V9</td><td class="reg"><input type="text" id="V9" class="reg" name="V9" size="2"></td></tr>
+							<tr class="reg"><td class="reg">VA</td><td class="reg"><input type="text" id="VA" class="reg" name="VA" size="2"></td></tr>
+							<tr class="reg"><td class="reg">VB</td><td class="reg"><input type="text" id="VB" class="reg" name="VB" size="2"></td></tr>
+							<tr class="reg"><td class="reg">VC</td><td class="reg"><input type="text" id="VC" class="reg" name="VC" size="2"></td></tr>
+							<tr class="reg"><td class="reg">VD</td><td class="reg"><input type="text" id="VD" class="reg" name="VD" size="2"></td></tr>
+							<tr class="reg"><td class="reg">VE</td><td class="reg"><input type="text" id="VE" class="reg" name="VE" size="2"></td></tr>
+							<tr class="reg"><td class="reg">VF</td><td class="reg"><input type="text" id="VF" class="reg" name="VF" size="2"></td></tr>
+						</table>
+					</td>
+					<!-- PC and [I] table -->
+					<td style="vertical-align: top;">
+						<table>
+							<tr><td>
+								<table class="reg">
+									<tr class="reg"><td class="reg">PC</td><td class="reg"><input type="text" id="PC" class="reg" name="PC" size="4"></td></tr>
+								</table>
+							</td></tr>
+							<tr><td>
+								<table class="reg">
+									<tr class="reg"><td class="reg">[ I ]</td><td class="reg"><input type="text" id="[I]" class="reg" name="[I]" size="4"></td></tr>
+								</table>
+							</td></tr>
+						</table>
+					</td>
+					</tr>
+				</table> <!-- End of Virtual Machine Controls -->
 				</center>
 				</td></tr>
 				</table>
 		    </center>
-			</td>
+			</td>  <!-- End of VIRTUAL MACHINE -->
+
 		</tr>
 	</tbody>
 </table>
