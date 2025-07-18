@@ -63,29 +63,52 @@ function pad0 (val, n) {
   return ( v );
 }
 
+mem = [];
+mem_top = 0x0200;
+V = [];
+PC = 0x0200;
+I = 0x0000;
+
+function update_display() {
+  // Show the Memory starting with mem_top (even addresses)
+  base_addr = 2 * Math.floor(mem_top/2);
+  for (i=0; i<16; i++) {
+    i_text = i.toString(16).toUpperCase().trim();
+    addr = base_addr + (2*i);
+    document.getElementById("A"+i_text).innerHTML = pad0 ( addr.toString(16).toUpperCase(), 4 );
+    mem_val = (mem[addr] << 8) + mem[addr+1];
+    document.getElementById("M"+i_text).value = pad0 ( mem_val.toString(16).toUpperCase(), 4 );
+
+    // Initialize the register values
+    a = "V" + i_text;
+    document.getElementById(a).value = pad0 ( V[i].toString(16).toUpperCase(), 2 );
+  }
+  document.getElementById("PC").value = pad0 ( "0", 3 );
+  document.getElementById("[I]").value = pad0 ( "0", 4 );
+}
+
+function init_machine() {
+  // Initialize the memory
+  mem = [];
+  for (i=0; i<0x10000; i++) {
+    mem.push(0xff);
+  }
+  // Initialize the "V" registers
+  V = [];
+  for (i=0; i<16; i++) {
+    V.push(3+i);
+  }
+  update_display();
+}
+
 function onload() {
   // console.log ("Page loaded");
-  // Initialize the Address values
-  for (i=0; i<16; i++) {
-    itext = i.toString(16).toUpperCase().trim();
-    itext2 = (i*2).toString(16).toUpperCase().trim();
-    // Initialize the memory address labels
-    a = "A" + itext;
-    document.getElementById(a).innerHTML = pad0 ( itext2, 3 );
-    // Initialize the memory values
-    a = "M" + itext;
-    document.getElementById(a).value = pad0 ( itext, 4 );
-    // Initialize the register values
-    a = "V" + itext;
-    document.getElementById(a).value = pad0 ( itext, 2 );
-    document.getElementById("PC").value = pad0 ( "0", 3 );
-    document.getElementById("[I]").value = pad0 ( "0", 4 );
-  }
   // Initialize the drawing area
   da = document.getElementById ("drawing_area");
   ctxt = da.getContext('2d');
   ctxt.fillStyle = 'black';
   ctxt.fillRect(0, 0, da.width, da.height);
+  init_machine();
 }
 
 function changed_format() {
@@ -386,15 +409,9 @@ function assemble() {
   }
 }
 
-function disassemble() {
-  // console.log ("Disassemble code");
-  bintxt = document.getElementById ( "machine" ).value;
-  // console.log ( "Text = " + bintxt );
-  opts = document.getElementById ( "disassem_opts" ).value;
-  // console.log ( "Disassemble with options: " + opts );
-
+function get_machine_lines ( text_in ) {
   // Normalize line endings and remove empty lines
-	text = replaceAll( bintxt, "\r", "\n");
+	text = replaceAll( text_in, "\r", "\n");
 	while (text.indexOf("\n\n") >= 0) {
 		text = replaceAll(text, "\n\n", "\n");
 	}
@@ -414,7 +431,17 @@ function disassemble() {
 		lines.push ( text.slice(0,4) );
 		text = text.slice(4)
   }
+  return ( lines );
+}
 
+function disassemble() {
+  // console.log ("Disassemble code");
+  bintxt = document.getElementById ( "machine" ).value;
+  // Convert the text into lines
+	lines = get_machine_lines ( bintxt );
+  // console.log ( "Text = " + bintxt );
+  opts = document.getElementById ( "disassem_opts" ).value;
+  // console.log ( "Disassemble with options: " + opts );
   // Clear the source window
   document.getElementById ( "source" ).value = "";
 	// Process the lines one by one
@@ -546,6 +573,19 @@ function restore() {
   document.getElementById ( "source" ).value = saved_text;
 }
 
+function load() {
+  // Load from the machine code text area into mem
+  bintxt = document.getElementById ( "machine" ).value;
+  // Convert the text into lines of instructions
+	lines = get_machine_lines ( bintxt );
+  addr = 0x0200;
+	for (i=0; i<lines.length; i++) {
+	  mem[addr++] = parseInt ( lines[i].slice(0,2), 16 );
+	  mem[addr++] = parseInt ( lines[i].slice(2,4), 16 );
+	}
+	update_display();
+}
+
 function run() {
 }
 
@@ -596,7 +636,11 @@ function stop() {
 			</select>
 		</td>
 		<td>
-		  &nbsp; &nbsp; &nbsp; &nbsp; 
+		  &nbsp; &nbsp; &nbsp; &nbsp;
+			<input type="button" name="load"  value="Load"  onclick="load();"></input>
+		</td>
+		<td>
+		  &nbsp; &nbsp; &nbsp; &nbsp;
 			<input type="button" name="run"  value="Run"  onclick="run();"></input>
 			<input type="button" name="step1" value="Step" onclick="step1();"></input>
 			<input type="button" name="stop" value="Stop" onclick="stop();"></input>
@@ -665,7 +709,8 @@ R4:  DATA 8010    ; Image data</textarea>
 
 				<textarea id="machine" rows="27" cols="5"
 				   autocomplete="off" autocorrect="off"
-				   autocapitalize="off" spellcheck="false">
+				   autocapitalize="off" spellcheck="false"></textarea>
+<!--
 A21E
 C201
 3201
@@ -683,7 +728,7 @@ D014
 2010
 2040
 8010
-</textarea>
+</textarea> -->
 				</center>
 			</td>
 
