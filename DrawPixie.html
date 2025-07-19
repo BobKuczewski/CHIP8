@@ -1,0 +1,267 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+<title>Draw/Edit Pixie Graphics</title>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+<script>
+
+// Default screen is 64 x 32 with a cell size of 15.
+// Change to fit your screen or add autosizing code
+var num_cols = 64;
+var num_rows = 32;
+var cell_size = 15;
+
+var board;
+
+// Default drawing in hex format (currently "COSMAC ELF COOL")
+hex_text = "ff,ff,ff,ff,ff,ff,ff,ff,\n88,8b,a2,3f,ff,fe,0f,ff,\n" +
+           "ba,b9,2a,ff,ff,9d,f3,ff,\nba,88,22,ff,ff,fb,7d,ff,\n" +
+           "ba,ea,aa,ff,13,e7,be,ff,\n88,8b,aa,38,e0,1f,ff,7f,\n" +
+           "ff,ff,ff,e7,c0,03,ff,7f,\nff,ff,ff,df,c1,c0,ff,bf,\n" +
+           "82,78,3f,bf,c1,80,3f,bf,\n82,78,3f,7f,e3,83,87,bf,\n" +
+           "9e,79,ff,7f,ff,83,f1,df,\n9e,79,fe,ff,ff,c7,fc,5f,\n" +
+           "86,78,7e,ff,0f,ff,ff,0f,\n86,78,7e,fe,07,ff,ff,27,\n" +
+           "9e,79,fd,fe,07,ff,fc,27,\n9e,79,fd,ff,0f,ff,d8,2f,\n" +
+           "82,09,fd,ff,ff,ff,b0,2f,\n82,09,fe,ff,ff,ff,a0,2f,\n" +
+           "ff,ff,fe,ff,ff,ff,60,2f,\nff,ff,ff,77,ff,df,40,6f,\n" +
+           "c7,1c,67,b7,ff,ce,c0,5f,\n82,08,27,db,ff,be,80,df,\n" +
+           "92,49,27,e3,ff,3d,80,bf,\n92,49,27,fc,30,fd,01,bf,\n" +
+           "9e,49,27,ff,8f,f1,03,7f,\n9e,49,27,ff,f7,ee,86,ff,\n" +
+           "9e,49,27,ff,fb,de,dd,ff,\n9e,49,27,ff,e0,3f,73,ff,\n" +
+           "92,49,27,ff,df,df,8f,ff,\n82,08,20,ff,e0,3f,ff,ff,\n" +
+           "c7,1c,60,ff,9f,7f,ff,ff,\nff,ff,ff,ff,3f,bf,ff,ff,\n";
+
+
+function onload_code ( event ) {
+  // Set the size of the canvas and generate the "board" array
+  var da,r,c,row,hex_csv;
+  da = document.getElementById("drawing_area");
+  da.width  = num_cols * cell_size;
+  da.height = num_rows * cell_size;
+  board = [];
+  for (r=0; r<num_rows; r++) {
+    row = [];
+		for (c=0; c<num_cols; c++) {
+		  row.push(0);
+		}
+	  board.push(row);
+  }
+  hex_csv = document.getElementById("HexCSV");
+  hex_csv.value = hex_text;
+  update_from_hex();
+  update_code();
+}
+
+var mouse_is_down = 0;
+var current_color = 1;
+
+function mouse_up ( event ) {
+  mouse_is_down = 0;
+  draw_canvas();
+}
+
+function mouse_down ( event ) {
+  mouse_is_down = 1;
+  var da = document.getElementById ( "drawing_area" );
+  var mx = event.clientX - da.getBoundingClientRect().x;
+  var my = event.clientY - da.getBoundingClientRect().y;
+  mx = mx - 2; // Guessed this offset
+  my = my - 2; // Guessed this offset
+  var c = Math.floor(mx / cell_size);
+  var r = Math.floor(my / cell_size);
+  if (board[r][c] == 0) {
+    current_color = 1;
+  } else {
+    current_color = 0;
+  }
+  board[r][c] = current_color;
+  draw_canvas();
+}
+
+function mouse_movement ( event ) {
+  if (mouse_is_down) {
+		var da = document.getElementById ( "drawing_area" );
+		var mx = event.clientX - da.getBoundingClientRect().x;
+		var my = event.clientY - da.getBoundingClientRect().y;
+		mx = mx - 2; // Guessed this offset
+		my = my - 2; // Guessed this offset
+		var c = Math.floor(mx / cell_size);
+		var r = Math.floor(my / cell_size);
+	  board[r][c] = current_color;
+	  draw_canvas();
+  }
+}
+
+function draw_canvas() {
+  var drawing_area = document.getElementById ( "drawing_area" );
+  var w = drawing_area.width;
+  var h = drawing_area.height;
+  var r,c;
+  var ctxt = drawing_area.getContext("2d");
+  // Fill background with black
+  ctxt.fillStyle = "#000000";
+  ctxt.fillRect(0,0,w,h);
+  // Draw the data pixels
+  for (r=0; r<num_rows; r++) {
+    for (c=0; c<num_cols; c++) {
+      if (board[r][c] == 0) {
+			  ctxt.fillStyle = "#000000";
+			} else {
+			  ctxt.fillStyle = "#FFFFFF";
+      }
+      ctxt.fillRect(cell_size*c,cell_size*r,cell_size,cell_size);
+    }
+  }
+  // Draw a grid
+  ctxt.lineWidth = 1;
+  ctxt.strokeStyle = "#888888";
+  // Draw the vertical lines
+  ctxt.beginPath();
+  for (c=1; c<num_cols; c++) {
+		ctxt.moveTo ( c*cell_size, 0 );
+		ctxt.lineTo ( c*cell_size, h );
+	}
+  ctxt.stroke();
+  // Draw the horizontal lines
+  ctxt.beginPath();
+  for (r=1; r<num_rows; r++) {
+		ctxt.moveTo ( 0, r*cell_size );
+		ctxt.lineTo ( w, r*cell_size );
+	}
+  ctxt.stroke();
+}
+
+function update_code() {
+  // Update the binary text from the drawing board
+  var csv_string = "";
+  var r,c,v;
+  for (r=0; r<board.length; r++) {
+    for (c=0; c<board[r].length; c++) {
+      csv_string += String(board[r][c]) + ",";
+    }
+    csv_string += "\n";
+  }
+  document.getElementById("BinaryCSV").value = csv_string;
+
+  // Update the hex text from the drawing board
+  csv_string = "";
+  r = 0;
+  while (r<board.length) {
+    c = 0;
+    v = 0;
+    while (c<board[r].length) {
+      v = (v<<1) | board[r][c];
+      if ( ((c+1)%8) == 0 ) {
+        csv_string += ("0"+v.toString(16)).slice(-2) + ",";
+        v = 0;
+      }
+      c++;
+    }
+    csv_string += "\n";
+    r++;
+  }
+  document.getElementById("HexCSV").value = csv_string;
+}
+
+function update_from_binary() {
+  // Update the drawing board from the binary text
+  var csv_rows = document.getElementById("BinaryCSV").value.trim().split('\n');
+  board = [];
+  for (r=0; r<csv_rows.length; r++) {
+    var csv_row = csv_rows[r].split(',');
+    row = [];
+		for (c=0; c<csv_row.length; c++) {
+		  if (csv_row[c].length > 0) {
+		    row.push(Number(csv_row[c]));
+		  }
+		}
+	  board.push(row);
+	}
+  draw_canvas();
+}
+
+function update_from_hex() {
+  // Update the drawing board from the hex text
+  var csv_rows = document.getElementById("HexCSV").value.trim().split('\n');
+  var i, v;
+  board = [];
+  for (r=0; r<csv_rows.length; r++) {
+    if (csv_rows[r].trim().length > 0) {
+		  var csv_row = csv_rows[r].split(',');
+		  row = [];
+			for (c=0; c<csv_row.length; c++) {
+				if (csv_row[c].trim().length > 0) {
+					v = parseInt(csv_row[c],16);
+					for (i=0; i<8; i++) {
+					  row.push((v>>(7-i))&0x01);
+					}
+				}
+			}
+			board.push(row);
+	  }
+	}
+  draw_canvas();
+}
+
+function clear_with ( value ) {
+  board = [];
+  for (r=0; r<num_rows; r++) {
+    row = [];
+		for (c=0; c<num_cols; c++) {
+		  row.push(value);
+		}
+	  board.push(row);
+	}
+  draw_canvas();
+}
+
+function invert_image () {
+  for (r=0; r<num_rows; r++) {
+		for (c=0; c<num_cols; c++) {
+		  board[r][c] = 1 - board[r][c];
+		}
+	}
+  draw_canvas();
+}
+
+</script>
+</head>
+
+<body onload="onload_code();draw_canvas()" onresize="draw_canvas()" bgcolor="lightblue">
+
+<center>
+<b>Draw/Edit Pixie Graphics</b>
+<br/>
+<canvas id="drawing_area" width="560" height="320"
+        style="border:1px solid #000000;"
+        oncontextmenu="return false;"
+        onmousemove="mouse_movement(event)"
+        onmousedown="mouse_down(event)"
+        onmouseup="mouse_up(event)">
+  Your browser does not support the HTML5 canvas tag.
+</canvas>
+<hr/>
+<input type="button" name="update_code" value="&#9660; Update Code from Drawing &#9660;" onclick="update_code()"></input> &nbsp;
+<input type="button" name="update_from_binary" value="&#9650; Update Drawing from Binary &#9650;" onclick="update_from_binary()"></input> &nbsp;
+<input type="button" name="update_from_hex" value="&#9650; Update Drawing from Hex &#9650;" onclick="update_from_hex()"></input> &nbsp;
+<hr/>
+Binary CSV representation of Drawing<br/>
+<textarea id="BinaryCSV" rows="8" cols="130">
+</textarea>
+<hr/>
+Hex CSV representation of Drawing<br/>
+<textarea id="HexCSV" rows="8" cols="130">
+</textarea>
+
+<hr/>
+<input type="button" name="clear_white" value="Clear with White" onclick="clear_with(1)"></input> &nbsp;
+<input type="button" name="invert" value="Invert" onclick="invert_image()"></input> &nbsp;
+<input type="button" name="clear_black" value="Clear with Black" onclick="clear_with(0)"></input> &nbsp;
+<hr/>
+
+</center>
+
+</body>
+</html>
