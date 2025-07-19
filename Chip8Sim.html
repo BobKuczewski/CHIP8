@@ -53,6 +53,20 @@ input.regleft {
   height: 8px;
   /*outline-width: 0px;*/
 }
+table.ex, th.ex, tr.ex, td.ex {
+  border: 2px solid black;
+	font-family: monospace;
+	font-weight: bold;
+	font-size: 100%;
+	padding-top: 3px;
+	padding-left: 5px;
+	padding-right: 5px;
+	padding-bottom: 1px;
+  border-collapse: collapse;
+}
+th.ex {
+	font-size: 120%;
+}
 </style>
 
 <script>
@@ -664,9 +678,9 @@ function reset() {
 function step1() {
   // Could not use the name "step" for some reason?
   instruction = (mem[PC] << 8) + mem[PC+1];
-  console.log ( "Execute " + pad0(instruction.toString(16).toUpperCase(),4) );
+  // console.log ( "Execute " + pad0(instruction.toString(16).toUpperCase(),4) );
   if (instruction == 0x00E0) { // CLS
-    console.log ( "CLS" );
+    // console.log ( "CLS" );
     clear_screen();
 	  PC = PC + 2;
   } else if (instruction == 0x00EE) { // RET
@@ -802,6 +816,21 @@ function run() {
 }
 
 function stop() {
+}
+
+function on_help_change() {
+  // console.log ( "on_help_change called" );
+	let selector = document.getElementById("show_help");
+	let setting = selector[selector.selectedIndex].value;
+	let n = selector.options.length;
+	for (let i=0; i<n; i++) {
+	  let ith_id = selector.options[i].value;
+	  if (ith_id == setting) {
+	    document.getElementById(ith_id).hidden = false;
+	  } else {
+	    document.getElementById(ith_id).hidden = true;
+	  }
+	}
 }
 
 </script>
@@ -1052,11 +1081,83 @@ D014
 	</tbody>
 </table>
 
+<p/><hr/><p/>
+
+<h3>Documentation and Examples &nbsp;
+<select id="show_help" onchange="on_help_change()">
+<option value="none" selected>-- Select --</option>
+<option value="introduction">Introduction</option>
+<option value="instruction_set">Instruction Set</option>
+<option value="hex_to_binary">Hex to Binary</option>
+<option value="examples">Examples</option>
+</select>
+<button type="button" onclick="on_help_change();">Load</button>
+</h3>
+
+<p/><hr/><p/>
+
+<!-- for some reason, there are at least 3 unmatched "center" tags above that should be closed! -->
+</center>
+</center>
+</center>
 
 
+<div id="none" hidden></div>
+
+
+<div id="introduction" hidden>
+<center>
+<h3>Introduction</h3>
+</center>
+
+This Javascript/HTML program implements a version of the CHIP-8 programming environment.
+<br/><br/>
+CHIP-8 source code can be entered in the "Source Code" text area. It can be assembled into the
+"Machine Code" text area. From there it can be loaded into the simulator and run. The CHIP-8
+screen is 64 x 32 (or 40 x 20 in hex).
+<br/><br/>
+The "Assemble" button assembles the source code and produces machine code.
+<br/><br/>
+The "Save" button saves a copy of the source window internally (it may be lost if you leave the page).
+<br/><br/>
+The "Restore" button restores the internally saved copy of the source window.
+<br/><br/>
+The "Diassemble as" button will disassemble from the Machine Code window into the Source Code window
+(over-writing any text already in the Source Code window). The format of the disassembly is governed
+by the selector which is one of the following:
+<ul>
+<li>Src: Generates only source - can be reassembled.</li>
+<li>L+S: Generates labels and source - can be reassembled.</li>
+<li>H+S: Generates hex and source - cannot be reassembled.</li>
+<li>LHS: Generates labels, hex, and source - cannot be reassembled.</li>
+</ul>
+
+The "Load" button will load the hex values in the "Machine Code" window into the memory of the simulation.
+You will see the machine code in the memory area below the graphics window.
+<br/><br/>
+
+The "Reset" button clears the graphics output and set all registers to their default state.
+<br/><br/>
+
+The "Step" button will run a single CHIP-8 instruction and then stop.
+<br/><br/>
+
+The "Run" button will run 1000 CHIP-8 instructions and then stop.
+<br/><br/>
+
+The "Stop" button is not currently implemented.
+<br/><br/>
+
+<hr/>
+
+</div>
+
+
+<div id="instruction_set" hidden>
 
 <p/>
-=== Assembler Syntax === <!-- http://devernay.free.fr/hacks/chip8/C8TECH10.HTM -->
+<center>
+=== Instruction Set and Assembler Syntax === <!-- http://devernay.free.fr/hacks/chip8/C8TECH10.HTM -->
 <table><tr><td>
 <tt>
 <pre>
@@ -1105,7 +1206,22 @@ Fx65 - LD Vx, [I]         Restore Register: Read registers V0 through Vx from me
 </td></tr></table>
 <hr/>
 </center>
+</div>
 
+
+<div id="hex_to_binary" hidden>
+
+
+<h3>CHIP-8 Program File Format (.ch8)</h3>
+The .ch8 files appear to be binary. Javascript can certainly generate binary data, but it's difficult
+to provide a way to get that into a file. For that reasin
+This program expects all program instructions and all data to be in hexadecimal format. The simplest
+format is just a string of hex digits with arbitrary whitespace allowed. This simple format is always
+loaded from 0 upwards in memory. Additionally, each line of hex text can begin with a hex address followed
+by a colon (:) that will become the starting address for the next byte. This program also recognizes and
+loads programs (and data) from the Intel Hex format.
+
+<p/>
 Note: You can convert a binay <b>.ch8</b> file to hex for the Machine Code window with:<br/>
 <br/>
 $ od -v -tx1 -An filename<br/>
@@ -1118,6 +1234,320 @@ a2 1e c2 01 32 01 a2 1a d0 14 70 04 30 40 12 00<br/>
 60 00 71 04 31 20 12 00 12 18 80 40 20 10 20 40<br/>
 80 10
 </tt>
+<hr/>
+
+</div>
+
+
+
+
+<div id="instruction_set" hidden>
+
+<h3>RCA 1802 Instruction Set</h3>
+
+<p/>
+<hr/>
+<p/>
+
+</div>
+
+<div id="examples" hidden>
+
+<center>
+<table>
+<tr><th><h3>Example Programs</h3>Use: select, copy, and paste to run</th></tr>
+<tr><td>
+<table class="ex">
+<tr class="ex"><th class="ex">Source Code</th><th class="ex">Machine Code</th></tr>
+
+<tr class="ex"><td class="ex" valign="top"><pre>
+;===========================;
+; Generate a maze in CHIP-8 ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;   V2 used for random bit  ;
+;===========================;
+
+TOP: LD I,R3      ; Load sprite address
+     RND V2,01    ; Put random bit in V2
+     SE V2,01     ; Skip if V2=1 (random)
+     LD I,R1      ; Load a different sprite
+     DRW V0,V1,4  ; Draw at (V0,V1) 4 rows
+     ADD V0,04    ; Add 4 to x coord
+     SE V0,40     ; Skip if at end of V0
+     JP TOP       ; Go back to top
+     LD V0,00     ; At end so go back x=0
+     ADD V1,04    ; Add 4 to y
+     SE V1,20     ; Skip if end of y (done)
+     JP TOP       ; Go back to top
+END: JP END       ; Stay here ... forever
+
+R1:  DATA 8040    ; Image data
+R2:  DATA 2010    ; Image data
+R3:  DATA 2040    ; Image data
+R4:  DATA 8010    ; Image data
+</pre></td>
+<td class="ex" valign="top"><pre>
+A21E
+C201
+3201
+A21A
+D014
+7004
+3040
+1200
+6000
+7104
+3120
+1200
+1218
+8040
+2010
+2040
+8010</pre></td></tr>
+
+<tr class="ex"><td class="ex" valign="top"><pre>
+;===========================;
+; Generate boxes in CHIP-8  ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;===========================;
+
+TOP: LD I,BX      ; Load sprite address
+     LD V0,00     ; Load x
+     LD V1,00     ; Load y
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+END: JP END       ; Stay here ... forever
+BX:  DATA FF81    ; Image data
+     DATA 8181    ; Image data
+     DATA 8181    ; Image data
+     DATA 81FF    ; Image data</pre></td>
+<td class="ex" valign="top"><pre>
+A22E
+6000
+6100
+D018
+7005
+7102
+D018
+7005
+7102
+D018
+7005
+7102
+D018
+7005
+7102
+D018
+7005
+7102
+D018
+7005
+7102
+D018
+122C
+FF81
+8181
+8181
+81FF
+</pre></td></tr>
+
+<tr class="ex"><td class="ex" valign="top"><pre>
+;================================;
+; Generate a large box in CHIP-8 ;
+;================================;
+; Registers:                     ;
+;   V0 used for x                ;
+;   V1 used for y                ;
+;================================;
+
+TOP: LD I,HZ      ; Load sprite address
+
+     LD V0,04     ; Load x
+     LD V1,04     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,0C     ; Load x
+     LD V1,04     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,14     ; Load x
+     LD V1,04     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,1C     ; Load x
+     LD V1,04     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,24     ; Load x
+     LD V1,04     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,2C     ; Load x
+     LD V1,04     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,34     ; Load x
+     LD V1,04     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+
+     LD I,VT      ; Load sprite address
+
+     LD V0,3B     ; Load x
+     LD V1,04     ; Load y
+     DRW V0,V1,8  ; Draw at (V0,V1) 1 row
+     LD V0,3B     ; Load x
+     LD V1,0C     ; Load y
+     DRW V0,V1,8  ; Draw at (V0,V1) 1 row
+     LD V0,3B     ; Load x
+     LD V1,14     ; Load y
+     DRW V0,V1,8  ; Draw at (V0,V1) 1 row
+
+     LD I,HZ      ; Load sprite address
+
+     LD V0,34     ; Load x
+     LD V1,1B     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,2C     ; Load x
+     LD V1,1B     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,24     ; Load x
+     LD V1,1B     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,1C     ; Load x
+     LD V1,1B     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,14     ; Load x
+     LD V1,1B     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,0C     ; Load x
+     LD V1,1B     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+     LD V0,04     ; Load x
+     LD V1,1B     ; Load y
+     DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+
+     LD I,VT      ; Load sprite address
+
+     LD V0,04     ; Load x
+     LD V1,13     ; Load y
+     DRW V0,V1,8  ; Draw at (V0,V1) 1 row
+     LD V0,04     ; Load x
+     LD V1,0B     ; Load y
+     DRW V0,V1,8  ; Draw at (V0,V1) 1 row
+     LD V0,04     ; Load x
+     LD V1,04     ; Load y
+     DRW V0,V1,8  ; Draw at (V0,V1) 1 row
+
+
+END: JP END       ; Stay here ... forever
+
+HZ:  DATA FF00    ; Horizontal
+VT:  DATA 8080    ; Vertical
+     DATA 8080    ; Vertical
+     DATA 8080    ; Vertical
+     DATA 8080    ; Vertical
+</pre></td>
+<td class="ex" valign="top"><pre>
+A282
+6004
+6104
+D011
+600C
+6104
+D011
+6014
+6104
+D011
+601C
+6104
+D011
+6024
+6104
+D011
+602C
+6104
+D011
+6034
+6104
+D011
+A284
+603B
+6104
+D018
+603B
+610C
+D018
+603B
+6114
+D018
+A282
+6034
+611B
+D011
+602C
+611B
+D011
+6024
+611B
+D011
+601C
+611B
+D011
+6014
+611B
+D011
+600C
+611B
+D011
+6004
+611B
+D011
+A284
+6004
+6113
+D018
+6004
+610B
+D018
+6004
+6104
+D018
+1280
+FF00
+8080
+8080
+8080
+8080
+</pre></td></tr>
+
+
+</table>
+</td></tr>
+</table>
+
+</center>
+
+<hr/>
+
+</div>
+
 
 </body>
 
