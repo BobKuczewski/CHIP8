@@ -251,6 +251,33 @@ function assemble() {
 	}
 	lines = new_lines;
 
+	// Remove any and all last lines containing empty labels
+	while ( lines[lines.length-1].indexOf(":") == (lines[lines.length-1].length-1) ) {
+	  // Copy all but the last line
+	  new_lines = [];
+		for (l=0; l<(lines.length-1); l++) {
+		  new_lines[l] = lines[l];
+		}
+		lines = new_lines;
+	}
+
+	// Merge empty labels with subsequent lines
+	new_lines = [];
+	l = 0;
+	while (l<lines.length) {
+		line = lines[l];
+		if (line.indexOf(":") == (line.length-1)) {
+			// This is an empty label so join it with the next line
+			l = l + 1;
+			new_lines.push ( line + " " + lines[l] );
+		} else {
+			// Just push this line by itself
+			new_lines.push ( line );
+		}
+		l = l + 1;
+	}
+	lines = new_lines;
+
   // Compute the label addresses
   label_dict = {};
 	for (l=0; l<lines.length; l++) {
