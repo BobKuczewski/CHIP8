@@ -75,6 +75,7 @@ mem = [];
 mem_top = 0x0200;
 V = [];
 PC = 0x0200;
+SP = 0x0001;
 I = 0x0000;
 num_rows = 32;
 num_cols = 64;
@@ -143,6 +144,7 @@ function update_display() {
     document.getElementById(a).value = pad0 ( V[i].toString(16).toUpperCase(), 2 );
   }
   document.getElementById("PC").value = pad0 ( PC.toString(16).toUpperCase(), 4 );
+  document.getElementById("SP").value = pad0 ( SP.toString(16).toUpperCase(), 4 );
   opcode = pad0(mem[PC].toString(16).toUpperCase(),2) + pad0(mem[PC+1].toString(16).toUpperCase(),2)
   document.getElementById("PCINST").value = disassemble_line( opcode.trim() );
   document.getElementById("[I]").value = pad0 ( I.toString(16).toUpperCase(), 4 );
@@ -689,6 +691,7 @@ function load() {
 
 function reset() {
   PC = 0x0200;
+  SP = 0x0001;
   I  = 0x0000;
 	for (i=0; i<16; i++) {
 	  V[i] = 0;
@@ -712,13 +715,28 @@ function step1() {
 	  PC = PC + 2;
   } else if (instruction == 0x00EE) { // RET
     // console.log ( "RET" );
-	  PC = PC + 2;
+    // Cowgod: The interpreter sets the program counter to the address
+    //         at the top of the stack, then subtracts 1 from the stack pointer.
+    PC = (mem[SP-1] << 8) | mem[SP];
+    PC = PC + 2;
+    SP = SP - 2;
   } else if ( (instruction & 0xF000) == 0x1000) {  // JP NNN
     // console.log ( "JP" );
     PC = instruction & 0xFFF;
   } else if ( (instruction & 0xF000) == 0x2000) { // CALL NNN
     // console.log ( "CALL" );
-	  PC = PC + 2;
+    // Cowgod: The interpreter increments the stack pointer,
+    //         then puts the current PC on the top of the stack.
+		//         The PC is then set to nnn.
+
+    // Push the high byte onto the stack
+    SP = SP + 1;
+    mem[SP] = (PC >> 8) & 0x00FF;
+    // Push the low byte onto the stack
+    SP = SP + 1;
+    mem[SP] = PC & 0x00FF;
+    // Jump to the new location
+    PC = instruction & 0xFFF;
   } else if ( (instruction & 0xF000) == 0x3000) { // SE Vx,byte
     // console.log ( "SE Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     if ( V[(instruction&0x0F00)>>8] == (instruction&0x00FF) ) {
@@ -1094,6 +1112,13 @@ D014
 									</table>
 								</td>
 							</tr>
+							<tr>
+								<td>
+									<table class="reg">
+										<tr class="reg"><td class="reg">SP</td><td class="reg"><input type="text" id="SP" class="reg" name="SP" size="4"></td></tr>
+									</table>
+								</td>
+							</tr>
 						</table>
 					</td>
 					</tr>
@@ -1190,19 +1215,19 @@ The "Stop" button is not currently implemented.
 <pre>
 Code   Assembly           Description - All numbers are hexadecimal
 ----   --------           -----------------------------------------
-       lbl:               A label - must not match any other string in the program!  &#x2705;
-nnnn - DATA nnnn          Initialize a data word (all values in hex)  &#x2705;
+       lbl:               &#x2705; A label - must not match any other string in the program!
+nnnn - DATA nnnn          &#x2705; Initialize a data word (all values in hex)
 
 0nnn - SYS addr           Jump to a machine code routine at nnn.
-00E0 - CLS                Clear the display.  &#x2705;
-00EE - RET                Return from a subroutine.
-1nnn - JP addr            Jump to location nnn.  &#x2705;
-2nnn - CALL addr          Call subroutine at nnn.
-3xkk - SE Vx, byte        Skip If Equal Immediate: Skip next instruction if Vx = kk.  &#x2705;
+00E0 - CLS                &#x2705; Clear the display.
+00EE - RET                &#x2705; Return from a subroutine.
+1nnn - JP addr            &#x2705; Jump to location nnn.
+2nnn - CALL addr          &#x2705; Call subroutine at nnn.
+3xkk - SE Vx, byte        &#x2705; Skip If Equal Immediate: Skip next instruction if Vx = kk.
 4xkk - SNE Vx, byte       Skip If Not Equal Immediate: Skip next instruction if Vx != kk.
 5xy0 - SE Vx, Vy          Skip If Equal Register: Skip next instruction if Vx = Vy.
-6xkk - LD Vx, byte        Load Immediate: Set Vx = kk.  &#x2705;
-7xkk - ADD Vx, byte       Add Immediate: Set Vx = Vx + kk.  &#x2705;
+6xkk - LD Vx, byte        &#x2705; Load Immediate: Set Vx = kk.
+7xkk - ADD Vx, byte       &#x2705; Add Immediate: Set Vx = Vx + kk.
 8xy0 - LD Vx, Vy          Load Register: Set Vx = Vy.
 8xy1 - OR Vx, Vy          Or Register: Set Vx = Vx OR Vy.
 8xy2 - AND Vx, Vy         And Register: Set Vx = Vx AND Vy.
@@ -1213,10 +1238,10 @@ nnnn - DATA nnnn          Initialize a data word (all values in hex)  &#x2705;
 8xy7 - SUBN Vx, Vy        Sub Negative Register: Set Vx = Vy - Vx, set VF = NOT borrow.
 8xyE - SHL Vx {, Vy}      Shift Left: Set Vx = Vx SHL 1.
 9xy0 - SNE Vx, Vy         Skip If Not Equal: Skip next instruction if Vx != Vy.
-Annn - LD I, addr         Load I Immediate: Set I = nnn.  &#x2705;
-Bnnn - JP V0, addr        Jump to V0 with offset nnn.  &#x2705;
-Cxkk - RND Vx, byte       Rand: Set Vx to a random number (0 to 255) AND byte value  &#x2705;
-Dxyn - DRW Vx, Vy, n      Draw: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.  &#x2705;
+Annn - LD I, addr         &#x2705; Load I Immediate: Set I = nnn.
+Bnnn - JP V0, addr        &#x2705; Jump to V0 with offset nnn.
+Cxkk - RND Vx, byte       &#x2705; Rand: Set Vx to a random number (0 to 255) AND byte value.
+Dxyn - DRW Vx, Vy, n      &#x2705; Draw: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
 Ex9E - SKP Vx             Skip if Key[Vx]: Skip next instruction if key with the value of Vx is pressed.
 ExA1 - SKNP Vx            Skip if !Key[Vx]: Skip next instruction if key with the value of Vx is not pressed.
 Fx07 - LD Vx, DT          Load Vx from Delay Timer: Set Vx = delay timer value.
@@ -1333,6 +1358,95 @@ D014
 2010
 2040
 8010</pre></td></tr>
+
+
+<tr class="ex"><td class="ex" valign="top"><pre>
+;===========================;
+; Draw small box in CHIP-8  ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;===========================;
+
+TOP: LD I,BX      ; Load sprite address
+     LD V0,1B     ; Load x
+     LD V1,0B     ; Load y
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+END: JP END       ; Stay here ... forever
+BX:  DATA FF81    ; Image data FF is top, 81 is sides
+     DATA 8181    ; Image data 81 is sides
+     DATA 8181    ; Image data 81 is sides
+     DATA 81FF    ; Image data 81 is sides, FF is bottom
+<td class="ex" valign="top"><pre>
+A20A
+601B
+610B
+D018
+1208
+FF81
+8181
+8181
+81FF
+</pre></td></tr>
+
+<tr class="ex"><td class="ex" valign="top"><pre>
+;===========================;
+; Draw boxes via subroutine ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;===========================;
+
+TOP: LD V0,01     ; Load x
+     LD V1,01     ; Load y
+     CALL BOX     ; Call the Box Subroutine
+
+     LD V0,37     ; Load x
+     LD V1,01     ; Load y
+     CALL BOX     ; Call the Box Subroutine
+
+     LD V0,01     ; Load x
+     LD V1,17     ; Load y
+     CALL BOX     ; Call the Box Subroutine
+
+     LD V0,37     ; Load x
+     LD V1,17     ; Load y
+     CALL BOX     ; Call the Box Subroutine
+
+END: JP END       ; Stay here ... forever
+
+BOX: LD I,BX      ; Load sprite address
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     RET
+
+BX:  DATA FF81    ; Image data FF is top, 81 is sides
+     DATA 8181    ; Image data 81 is sides
+     DATA 8181    ; Image data 81 is sides
+     DATA 81FF    ; Image data 81 is sides, FF is bottom
+<td class="ex" valign="top"><pre>
+6001
+6101
+221A
+6037
+6101
+221A
+6001
+6117
+221A
+6037
+6117
+221A
+1218
+A220
+D018
+00EE
+FF81
+8181
+8181
+81FF
+</pre></td></tr>
 
 <tr class="ex"><td class="ex" valign="top"><pre>
 ;===========================;
