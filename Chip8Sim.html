@@ -89,6 +89,16 @@ function hex (val) {
 	return ( val.toString(16).toUpperCase() );
 }
 
+function clear_screen() {
+  // Clear the display memory
+  for (r=0; r<num_rows; r++) {
+    for (c=0; c<num_cols; c++) {
+      screen[r][c] = 0;
+    }
+  }
+	draw_screen();
+}
+
 function draw_screen() {
   da = document.getElementById ("drawing_area");
   ctxt = da.getContext('2d');
@@ -137,10 +147,9 @@ function init_machine() {
   }
   // Initialize the display memory
   screen = [];
-  for (r=0; r<32; r++) {
+  for (r=0; r<num_rows; r++) {
     row = [];
-    for (c=0; c<64; c++) {
-      // row.push((r+c)%2);
+    for (c=0; c<num_cols; c++) {
       row.push(0);
     }
     screen.push(row)
@@ -150,13 +159,8 @@ function init_machine() {
 }
 
 function onload() {
-  // console.log ("Page loaded");
-  // Initialize the drawing area
-  da = document.getElementById ("drawing_area");
-  ctxt = da.getContext('2d');
-  ctxt.fillStyle = bg_color;
-  ctxt.fillRect(0, 0, da.width, da.height);
   init_machine();
+  clear_screen();
 }
 
 function changed_format() {
@@ -663,77 +667,78 @@ function step1() {
   console.log ( "Execute " + pad0(instruction.toString(16).toUpperCase(),4) );
   if (instruction == 0x00E0) { // CLS
     console.log ( "CLS" );
+    clear_screen();
 	  PC = PC + 2;
   } else if (instruction == 0x00EE) { // RET
-    console.log ( "RET" );
+    // console.log ( "RET" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x1000) {  // JP NNN
-    console.log ( "JP" );
+    // console.log ( "JP" );
     PC = instruction & 0xFFF;
   } else if ( (instruction & 0xF000) == 0x2000) { // CALL NNN
-    console.log ( "CALL" );
+    // console.log ( "CALL" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x3000) { // SE Vx,byte
-    console.log ( "SE Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
+    // console.log ( "SE Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     if ( V[(instruction&0x0F00)>>8] == (instruction&0x00FF) ) {
 		  PC = PC + 4;
 		} else {
 		  PC = PC + 2;
 		}
   } else if ( (instruction & 0xF000) == 0x4000) { // SNE Vx,byte
-    console.log ( "SNE - Skip if Not Equal immediate" );
+    // console.log ( "SNE - Skip if Not Equal immediate" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x5000) { // SE Vx,Vy
-    console.log ( "SE - Skip if Equal Reg" );
+    // console.log ( "SE - Skip if Equal Reg" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x6000) { // LD Vx,byte
-    console.log ( "LD immediate with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
+    // console.log ( "LD immediate with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     V[(instruction&0x0F00)>>8] = instruction&0x00FF;
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x7000) { // ADD Vx,byte
-    console.log ( "ADD immediate === Add Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
+    // console.log ( "ADD immediate === Add Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     x = (instruction&0x0F00)>>8;
     V[x] = V[x] + (instruction&0x00FF);
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8000) { // LD Vx,Vy
-    console.log ( "LD Reg" );
+    // console.log ( "LD Reg" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8001) { // OR Vx,Vy
-    console.log ( "OR Reg" );
+    // console.log ( "OR Reg" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8002) { // AND Vx,Vy
-    console.log ( "AND Reg" );
+    // console.log ( "AND Reg" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8003) { // XOR Vx,Vy
-    console.log ( "XOR Reg" );
+    // console.log ( "XOR Reg" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8004) { // ADD Vx,Vy
-    console.log ( "ADD Reg" );
+    // console.log ( "ADD Reg" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8005) { // SUB Vx,Vy
-    console.log ( "SUB Reg" );
+    // console.log ( "SUB Reg" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8006) { // SHR Vx,Vy
-    console.log ( "SHR" );
+    // console.log ( "SHR" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8007) { // SUBN Vx,Vy
-    console.log ( "SUBN" );
+    // console.log ( "SUBN" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x800E) { // SHL Vx,Vy
-    console.log ( "SHL" );
+    // console.log ( "SHL" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x9000) { // SNE Vx,Vy
-    console.log ( "SNE - Skip if Not Equal Reg" );
+    // console.log ( "SNE - Skip if Not Equal Reg" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0xA000) { // I = NNN
-    console.log ( "LD I, addr" );
+    // console.log ( "LD I, addr" );
     I = instruction & 0xFFF;
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0xB000) { // JP V0,NNN
-    console.log ( "JP V0, addr" );
+    // console.log ( "JP V0, addr" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0xC000) { // RND Vx,byte
-		console.log ( "RND Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
+		// console.log ( "RND Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     V[(instruction&0x0F00)>>8] = Math.floor(Math.random() * 256) & (instruction&0x00FF);
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0xD000) { // DRW Vx,Vy,n
@@ -750,40 +755,40 @@ function step1() {
     }
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xE09E) { // SKP Vx (Skip Key Vx is Pressed
-    console.log ( "SKP Vx" );
+    // console.log ( "SKP Vx" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0xE0A1) { // SKNP Vx (Skip Key Vx is Not Pressed
-    console.log ( "SKNP Vx" );
+    // console.log ( "SKNP Vx" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF007) { // LD Vx, DT
-    console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,DT" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF00A) { // LD Vx, K
-    console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,DT" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF015) { // LD DT, Vx
-    console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,DT" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF018) { // LD ST, Vx
-    console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,DT" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF01E) { // ADD I, Vx
-    console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,DT" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF029) { // LD F, Vx
-    console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,DT" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF033) { // LD B, Vx
-    console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,DT" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF055) { // LD [I], Vx
-    console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,DT" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF065) { // LD Vx, [I]
-    console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,DT" );
 	  PC = PC + 2;
   } else {
-    console.log ( "UNKNOWN INSTRUCTION: " + pad0(instruction.toString(16).toUpperCase(),4) );
+    // console.log ( "UNKNOWN INSTRUCTION: " + pad0(instruction.toString(16).toUpperCase(),4) );
 	  PC = PC + 2;
   }
 	update_display();
@@ -1057,19 +1062,19 @@ D014
 <pre>
 Code   Assembly           Description - All numbers are hexadecimal
 ----   --------           -----------------------------------------
-       lbl:               A label - must not match any other string in the program!
-nnnn - DATA nnnn          Initialize a data word (all values in hex)
+       lbl:               A label - must not match any other string in the program!  &#x2705;
+nnnn - DATA nnnn          Initialize a data word (all values in hex)  &#x2705;
 
 0nnn - SYS addr           Jump to a machine code routine at nnn.
-00E0 - CLS                Clear the display.
+00E0 - CLS                Clear the display.  &#x2705;
 00EE - RET                Return from a subroutine.
-1nnn - JP addr            Jump to location nnn.
+1nnn - JP addr            Jump to location nnn.  &#x2705;
 2nnn - CALL addr          Call subroutine at nnn.
-3xkk - SE Vx, byte        Skip If Equal Immediate: Skip next instruction if Vx = kk.
+3xkk - SE Vx, byte        Skip If Equal Immediate: Skip next instruction if Vx = kk.  &#x2705;
 4xkk - SNE Vx, byte       Skip If Not Equal Immediate: Skip next instruction if Vx != kk.
 5xy0 - SE Vx, Vy          Skip If Equal Register: Skip next instruction if Vx = Vy.
-6xkk - LD Vx, byte        Load Immediate: Set Vx = kk.
-7xkk - ADD Vx, byte       Add Immediate: Set Vx = Vx + kk.
+6xkk - LD Vx, byte        Load Immediate: Set Vx = kk.  &#x2705;
+7xkk - ADD Vx, byte       Add Immediate: Set Vx = Vx + kk.  &#x2705;
 8xy0 - LD Vx, Vy          Load Register: Set Vx = Vy.
 8xy1 - OR Vx, Vy          Or Register: Set Vx = Vx OR Vy.
 8xy2 - AND Vx, Vy         And Register: Set Vx = Vx AND Vy.
@@ -1080,10 +1085,10 @@ nnnn - DATA nnnn          Initialize a data word (all values in hex)
 8xy7 - SUBN Vx, Vy        Sub Negative Register: Set Vx = Vy - Vx, set VF = NOT borrow.
 8xyE - SHL Vx {, Vy}      Shift Left: Set Vx = Vx SHL 1.
 9xy0 - SNE Vx, Vy         Skip If Not Equal: Skip next instruction if Vx != Vy.
-Annn - LD I, addr         Load I Immediate: Set I = nnn.
-Bnnn - JP V0, addr        Jump to V0 with offset nnn.
-Cxkk - RND Vx, byte       Rand: Set Vx to a random number (0 to 255) AND byte value
-Dxyn - DRW Vx, Vy, n      Draw: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+Annn - LD I, addr         Load I Immediate: Set I = nnn.  &#x2705;
+Bnnn - JP V0, addr        Jump to V0 with offset nnn.  &#x2705;
+Cxkk - RND Vx, byte       Rand: Set Vx to a random number (0 to 255) AND byte value  &#x2705;
+Dxyn - DRW Vx, Vy, n      Draw: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.  &#x2705;
 Ex9E - SKP Vx             Skip if Key[Vx]: Skip next instruction if key with the value of Vx is pressed.
 ExA1 - SKNP Vx            Skip if !Key[Vx]: Skip next instruction if key with the value of Vx is not pressed.
 Fx07 - LD Vx, DT          Load Vx from Delay Timer: Set Vx = delay timer value.
