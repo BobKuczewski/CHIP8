@@ -42,9 +42,29 @@ input.reg,input.mem {
   height: 8px;
   /*outline-width: 0px;*/
 }
+input.regleft {
+  font-size: 100%;
+  font-family: "Lucida Console", "Courier New", monospace;
+  text-align: left;
+  background-color: #ffffff;
+  border: none;
+  padding: 0px;
+  margin: 0px;
+  height: 8px;
+  /*outline-width: 0px;*/
+}
 </style>
 
 <script>
+
+mem = [];
+mem_top = 0x0200;
+V = [];
+PC = 0x0200;
+I = 0x0000;
+num_rows = 32;
+num_cols = 64;
+screen = [];
 
 function replaceAll ( s, t, r ) {
 	new_s = (s + " ").trim();
@@ -63,11 +83,24 @@ function pad0 (val, n) {
   return ( v );
 }
 
-mem = [];
-mem_top = 0x0200;
-V = [];
-PC = 0x0200;
-I = 0x0000;
+function hex (val) {
+	return ( val.toString(16).toUpperCase() );
+}
+
+function draw_screen() {
+  da = document.getElementById ("drawing_area");
+  ctxt = da.getContext('2d');
+  ctxt.fillStyle = 'black';
+  ctxt.fillRect(0, 0, da.width, da.height);
+  ctxt.fillStyle = 'white';
+  for (r=0; r<num_rows; r++) {
+    for (c=0; c<num_cols; c++) {
+      if (screen[r][c] != 0) {
+	      ctxt.fillRect(5*c, 5*r, 5, 5);
+	    }
+    }
+  }
+}
 
 function update_display() {
   // Show the Memory starting with mem_top (even addresses)
@@ -83,8 +116,10 @@ function update_display() {
     a = "V" + i_text;
     document.getElementById(a).value = pad0 ( V[i].toString(16).toUpperCase(), 2 );
   }
-  document.getElementById("PC").value = pad0 ( "0", 3 );
-  document.getElementById("[I]").value = pad0 ( "0", 4 );
+  document.getElementById("PC").value = pad0 ( PC.toString(16).toUpperCase(), 4 );
+  opcode = pad0(mem[PC].toString(16).toUpperCase(),2) + pad0(mem[PC+1].toString(16).toUpperCase(),2)
+  document.getElementById("PCINST").value = disassemble_line( opcode.trim() );
+  document.getElementById("[I]").value = pad0 ( I.toString(16).toUpperCase(), 4 );
 }
 
 function init_machine() {
@@ -96,9 +131,20 @@ function init_machine() {
   // Initialize the "V" registers
   V = [];
   for (i=0; i<16; i++) {
-    V.push(3+i);
+    V.push(0);
+  }
+  // Initialize the display memory
+  screen = [];
+  for (r=0; r<32; r++) {
+    row = [];
+    for (c=0; c<64; c++) {
+      // row.push((r+c)%2);
+      row.push(0);
+    }
+    screen.push(row)
   }
   update_display();
+  draw_screen();
 }
 
 function onload() {
@@ -434,6 +480,121 @@ function get_machine_lines ( text_in ) {
   return ( lines );
 }
 
+function disassemble_line ( line ) {
+
+  result = "";
+
+	// #### : 00E0 00EE
+  if (line == "00E0") {
+	  result += "CLS";
+	} else if (line == "00EE") {
+	  result += "RET";
+
+	// #nnn : 0 1 2 A B
+	} else if (line[0] == "0") {
+	  result += "SYS " + line.slice(1);
+	} else if (line[0] == "1") {
+	  // result += "JP L" + line.slice(1);
+	  result += "JP " + line.slice(1);
+	} else if (line[0] == "2") {
+	  // result += "CALL L" + line.slice(1);
+	  result += "CALL " + line.slice(1);
+	} else if (line[0] == "A") {
+	  result += "LD I," + line.slice(1);
+	} else if (line[0] == "B") {
+	  result += "JP V0," + line.slice(1);
+
+	// #nkk or #xkk : 3 4 6 7 C
+	} else if (line[0] == "3") {
+	  result += "SE V" + line[1] + "," + line.slice(2);
+	} else if (line[0] == "4") {
+	  result += "SNE V" + line[1] + "," + line.slice(2);
+	} else if (line[0] == "6") {
+	  result += "LD V" + line[1] + "," + line.slice(2);
+	} else if (line[0] == "7") {
+	  result += "ADD V" + line[1] + "," + line.slice(2);
+	} else if (line[0] == "C") {
+	  result += "RND V" + line[1] + "," + line.slice(2);
+
+	// #xy# : 5, 8, 9, D
+	} else if (line[0] == "5") {
+	  if (line[3] == "0") {
+		  result += "SE V" + line[1] + ",V" + line[2];
+		} else {
+		  result += "DATA " + line;
+		}
+	} else if (line[0] == "8") {
+	  if (line[3] == "0") {
+		  result += "LD V" + line[1] + ",V" + line[2];
+		} else if (line[3] == "1") {
+		  result += "OR V" + line[1] + ",V" + line[2];
+		} else if (line[3] == "2") {
+		  result += "AND V" + line[1] + ",V" + line[2];
+		} else if (line[3] == "3") {
+		  result += "XOR V" + line[1] + ",V" + line[2];
+		} else if (line[3] == "4") {
+		  result += "ADD V" + line[1] + ",V" + line[2];
+		} else if (line[3] == "5") {
+		  result += "SUB V" + line[1] + ",V" + line[2];
+		} else if (line[3] == "6") {
+		  result += "SHR V" + line[1] + ",V" + line[2];
+		} else if (line[3] == "7") {
+		  result += "SUBN V" + line[1] + ",V" + line[2];
+		} else if (line[3] == "E") {
+		  result += "SHL V" + line[1] + ",V" + line[2];
+		} else {
+		  result += "DATA " + line;
+		}
+	} else if (line[0] == "9") {
+	  if (line[3] == "0") {
+		  result += "SNE V" + line[1] + ",V" + line[2];
+		} else {
+		  result += "DATA " + line;
+		}
+	} else if (line[0] == "D") {
+	  result += "DRW V" + line[1] + ",V" + line[2] + "," + line[3];
+
+	// #x## : E, F
+	} else if (line[0] == "E") {
+	  if (line.slice(2) == "9E") {
+		  result += "SKP V" + line[1];
+	  } else if (line.slice(2) == "A1") {
+		  result += "SKNP V" + line[1];
+		} else {
+		  result += "DATA " + line;
+		}
+	} else if (line[0] == "F") {
+	  if (line.slice(2) == "07") {
+		  result += "LD V" + line[1] + ",DT";
+	  } else if (line.slice(2) == "0A") {
+		  result += "LD V" + line[1] + ",K";
+	  } else if (line.slice(2) == "15") {
+		  result += "LD DT,V" + line[1];
+	  } else if (line.slice(2) == "18") {
+		  result += "LD ST,V" + line[1];
+	  } else if (line.slice(2) == "1E") {
+		  result += "ADD I,V" + line[1];
+	  } else if (line.slice(2) == "29") {
+		  result += "LD F,V" + line[1];
+	  } else if (line.slice(2) == "33") {
+		  result += "LD B,V" + line[1];
+	  } else if (line.slice(2) == "55") {
+		  result += "LD [I],V" + line[1];
+	  } else if (line.slice(2) == "65") {
+		  result += "LD V" + line[1] + ",[I]";
+		} else {
+		  result += "DATA " + line;
+		}
+
+	// Unknown
+	} else {
+	  result += "DATA " + line;
+	}
+
+  return ( result );
+}
+
+
 function disassemble() {
   // console.log ("Disassemble code");
   bintxt = document.getElementById ( "machine" ).value;
@@ -446,7 +607,6 @@ function disassemble() {
   document.getElementById ( "source" ).value = "";
 	// Process the lines one by one
 	for (l=0; l<lines.length; l++) {
-
 		if (opts.indexOf("L") >= 0) {
 		  // document.getElementById ( "source" ).value += "L"+((l*2)+0x200).toString(16).toUpperCase() + ": ";
 		  document.getElementById ( "source" ).value += ((l*2)+0x200).toString(16).toUpperCase() + ": ";
@@ -454,113 +614,7 @@ function disassemble() {
 		if (opts.indexOf("H") >= 0) {
 		  document.getElementById ( "source" ).value += lines[l] + "  ";
 		}
-
-		// #### : 00E0 00EE
-	  if (lines[l] == "00E0") {
-		  document.getElementById ( "source" ).value += "CLS" + "\n";
-		} else if (lines[l] == "00EE") {
-		  document.getElementById ( "source" ).value += "RET" + "\n";
-
-		// #nnn : 0 1 2 A B
-		} else if (lines[l][0] == "0") {
-		  document.getElementById ( "source" ).value += "SYS " + lines[l].slice(1) + "\n";
-		} else if (lines[l][0] == "1") {
-		  // document.getElementById ( "source" ).value += "JP L" + lines[l].slice(1) + "\n";
-		  document.getElementById ( "source" ).value += "JP " + lines[l].slice(1) + "\n";
-		} else if (lines[l][0] == "2") {
-		  // document.getElementById ( "source" ).value += "CALL L" + lines[l].slice(1) + "\n";
-		  document.getElementById ( "source" ).value += "CALL " + lines[l].slice(1) + "\n";
-		} else if (lines[l][0] == "A") {
-		  document.getElementById ( "source" ).value += "LD I," + lines[l].slice(1) + "\n";
-		} else if (lines[l][0] == "B") {
-		  document.getElementById ( "source" ).value += "JP V0," + lines[l].slice(1) + "\n";
-
-		// #nkk or #xkk : 3 4 6 7 C
-		} else if (lines[l][0] == "3") {
-		  document.getElementById ( "source" ).value += "SE V" + lines[l][1] + "," + lines[l].slice(2) + "\n";
-		} else if (lines[l][0] == "4") {
-		  document.getElementById ( "source" ).value += "SNE V" + lines[l][1] + "," + lines[l].slice(2) + "\n";
-		} else if (lines[l][0] == "6") {
-		  document.getElementById ( "source" ).value += "LD V" + lines[l][1] + "," + lines[l].slice(2) + "\n";
-		} else if (lines[l][0] == "7") {
-		  document.getElementById ( "source" ).value += "ADD V" + lines[l][1] + "," + lines[l].slice(2) + "\n";
-		} else if (lines[l][0] == "C") {
-		  document.getElementById ( "source" ).value += "RND V" + lines[l][1] + "," + lines[l].slice(2) + "\n";
-
-		// #xy# : 5, 8, 9, D
-		} else if (lines[l][0] == "5") {
-		  if (lines[l][3] == "0") {
-			  document.getElementById ( "source" ).value += "SE V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else {
-			  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
-			}
-		} else if (lines[l][0] == "8") {
-		  if (lines[l][3] == "0") {
-			  document.getElementById ( "source" ).value += "LD V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else if (lines[l][3] == "1") {
-			  document.getElementById ( "source" ).value += "OR V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else if (lines[l][3] == "2") {
-			  document.getElementById ( "source" ).value += "AND V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else if (lines[l][3] == "3") {
-			  document.getElementById ( "source" ).value += "XOR V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else if (lines[l][3] == "4") {
-			  document.getElementById ( "source" ).value += "ADD V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else if (lines[l][3] == "5") {
-			  document.getElementById ( "source" ).value += "SUB V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else if (lines[l][3] == "6") {
-			  document.getElementById ( "source" ).value += "SHR V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else if (lines[l][3] == "7") {
-			  document.getElementById ( "source" ).value += "SUBN V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else if (lines[l][3] == "E") {
-			  document.getElementById ( "source" ).value += "SHL V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else {
-			  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
-			}
-		} else if (lines[l][0] == "9") {
-		  if (lines[l][3] == "0") {
-			  document.getElementById ( "source" ).value += "SNE V" + lines[l][1] + ",V" + lines[l][2] + "\n";
-			} else {
-			  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
-			}
-		} else if (lines[l][0] == "D") {
-		  document.getElementById ( "source" ).value += "DRW V" + lines[l][1] + ",V" + lines[l][2] + "," + lines[l][3] + "\n";
-
-		// #x## : E, F
-		} else if (lines[l][0] == "E") {
-		  if (lines[l].slice(2) == "9E") {
-			  document.getElementById ( "source" ).value += "SKP V" + lines[l][1] + "\n";
-		  } else if (lines[l].slice(2) == "A1") {
-			  document.getElementById ( "source" ).value += "SKNP V" + lines[l][1] + "\n";
-			} else {
-			  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
-			}
-		} else if (lines[l][0] == "F") {
-		  if (lines[l].slice(2) == "07") {
-			  document.getElementById ( "source" ).value += "LD V" + lines[l][1] + ",DT\n";
-		  } else if (lines[l].slice(2) == "0A") {
-			  document.getElementById ( "source" ).value += "LD V" + lines[l][1] + ",K\n";
-		  } else if (lines[l].slice(2) == "15") {
-			  document.getElementById ( "source" ).value += "LD DT,V" + lines[l][1] + "\n";
-		  } else if (lines[l].slice(2) == "18") {
-			  document.getElementById ( "source" ).value += "LD ST,V" + lines[l][1] + "\n";
-		  } else if (lines[l].slice(2) == "1E") {
-			  document.getElementById ( "source" ).value += "ADD I,V" + lines[l][1] + "\n";
-		  } else if (lines[l].slice(2) == "29") {
-			  document.getElementById ( "source" ).value += "LD F,V" + lines[l][1] + "\n";
-		  } else if (lines[l].slice(2) == "33") {
-			  document.getElementById ( "source" ).value += "LD B,V" + lines[l][1] + "\n";
-		  } else if (lines[l].slice(2) == "55") {
-			  document.getElementById ( "source" ).value += "LD [I],V" + lines[l][1] + "\n";
-		  } else if (lines[l].slice(2) == "65") {
-			  document.getElementById ( "source" ).value += "LD V" + lines[l][1] + ",[I]\n";
-			} else {
-			  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
-			}
-
-		// Unknown
-		} else {
-		  document.getElementById ( "source" ).value += "DATA " + lines[l] + "\n";
-		}
+    document.getElementById ( "source" ).value += disassemble_line ( lines[l] ) + "\n";
   }
 }
 
@@ -586,11 +640,158 @@ function load() {
 	update_display();
 }
 
-function run() {
+function reset() {
+  PC = 0x0200;
+  I  = 0x0000;
+	for (i=0; i<16; i++) {
+	  V[i] = 0;
+	}
+  for (r=0; r<num_rows; r++) {
+    for (c=0; c<num_cols; c++) {
+      screen[r][c] = 0;
+    }
+  }
+	draw_screen();
+	update_display();
 }
 
 function step1() {
-  // Could not use the name "step" for some reason
+  // Could not use the name "step" for some reason?
+  instruction = (mem[PC] << 8) + mem[PC+1];
+  console.log ( "Execute " + pad0(instruction.toString(16).toUpperCase(),4) );
+  if (instruction == 0x00E0) { // CLS
+    console.log ( "CLS" );
+	  PC = PC + 2;
+  } else if (instruction == 0x00EE) { // RET
+    console.log ( "RET" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF000) == 0x1000) {  // JP NNN
+    console.log ( "JP" );
+    PC = instruction & 0xFFF;
+  } else if ( (instruction & 0xF000) == 0x2000) { // CALL NNN
+    console.log ( "CALL" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF000) == 0x3000) { // SE Vx,byte
+    console.log ( "SE Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
+    if ( V[(instruction&0x0F00)>>8] == (instruction&0x00FF) ) {
+		  PC = PC + 4;
+		} else {
+		  PC = PC + 2;
+		}
+  } else if ( (instruction & 0xF000) == 0x4000) { // SNE Vx,byte
+    console.log ( "SNE - Skip if Not Equal immediate" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF000) == 0x5000) { // SE Vx,Vy
+    console.log ( "SE - Skip if Equal Reg" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF000) == 0x6000) { // LD Vx,byte
+    console.log ( "LD immediate with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
+    V[(instruction&0x0F00)>>8] = instruction&0x00FF;
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF000) == 0x7000) { // ADD Vx,byte
+    console.log ( "ADD immediate === Add Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
+    x = (instruction&0x0F00)>>8;
+    V[x] = V[x] + (instruction&0x00FF);
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF00F) == 0x8000) { // LD Vx,Vy
+    console.log ( "LD Reg" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF00F) == 0x8001) { // OR Vx,Vy
+    console.log ( "OR Reg" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF00F) == 0x8002) { // AND Vx,Vy
+    console.log ( "AND Reg" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF00F) == 0x8003) { // XOR Vx,Vy
+    console.log ( "XOR Reg" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF00F) == 0x8004) { // ADD Vx,Vy
+    console.log ( "ADD Reg" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF00F) == 0x8005) { // SUB Vx,Vy
+    console.log ( "SUB Reg" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF00F) == 0x8006) { // SHR Vx,Vy
+    console.log ( "SHR" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF00F) == 0x8007) { // SUBN Vx,Vy
+    console.log ( "SUBN" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF00F) == 0x800E) { // SHL Vx,Vy
+    console.log ( "SHL" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF00F) == 0x9000) { // SNE Vx,Vy
+    console.log ( "SNE - Skip if Not Equal Reg" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF000) == 0xA000) { // I = NNN
+    console.log ( "LD I, addr" );
+    I = instruction & 0xFFF;
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF000) == 0xB000) { // JP V0,NNN
+    console.log ( "JP V0, addr" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF000) == 0xC000) { // RND Vx,byte
+		console.log ( "RND Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
+    V[(instruction&0x0F00)>>8] = Math.floor(Math.random() * 256) & (instruction&0x00FF);
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF000) == 0xD000) { // DRW Vx,Vy,n
+    // Draw a sprite at Vx,Vy of size nx8 from bytes at [I]
+    vx = ( instruction & 0x0F00 ) >> 8;
+    vy = ( instruction & 0x00F0 ) >> 4;
+    n = instruction & 0x000F;
+    for (pixrow=0; pixrow<n; pixrow++) {
+      for (c=0; c<8; c++) {
+        if ( mem[I+pixrow] & (0x80 >> c) ) {
+			    screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = 1;
+			  }
+			}
+    }
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xE09E) { // SKP Vx (Skip Key Vx is Pressed
+    console.log ( "SKP Vx" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF000) == 0xE0A1) { // SKNP Vx (Skip Key Vx is Not Pressed
+    console.log ( "SKNP Vx" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF007) { // LD Vx, DT
+    console.log ( "LD Vx,DT" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF00A) { // LD Vx, K
+    console.log ( "LD Vx,DT" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF015) { // LD DT, Vx
+    console.log ( "LD Vx,DT" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF018) { // LD ST, Vx
+    console.log ( "LD Vx,DT" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF01E) { // ADD I, Vx
+    console.log ( "LD Vx,DT" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF029) { // LD F, Vx
+    console.log ( "LD Vx,DT" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF033) { // LD B, Vx
+    console.log ( "LD Vx,DT" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF055) { // LD [I], Vx
+    console.log ( "LD Vx,DT" );
+	  PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF065) { // LD Vx, [I]
+    console.log ( "LD Vx,DT" );
+	  PC = PC + 2;
+  } else {
+    console.log ( "UNKNOWN INSTRUCTION: " + pad0(instruction.toString(16).toUpperCase(),4) );
+	  PC = PC + 2;
+  }
+	update_display();
+	draw_screen();
+}
+
+function run() {
+	for (stepnum=0; stepnum<1000; stepnum++) {
+		step1();
+	}
 }
 
 function stop() {
@@ -638,11 +839,12 @@ function stop() {
 		<td>
 		  &nbsp; &nbsp; &nbsp; &nbsp;
 			<input type="button" name="load"  value="Load"  onclick="load();"></input>
+			<input type="button" name="reset"  value="Reset"  onclick="reset();"></input>
 		</td>
 		<td>
 		  &nbsp; &nbsp; &nbsp; &nbsp;
-			<input type="button" name="run"  value="Run"  onclick="run();"></input>
 			<input type="button" name="step1" value="Step" onclick="step1();"></input>
+			<input type="button" name="run"  value="Run"  onclick="run();"></input>
 			<input type="button" name="stop" value="Stop" onclick="stop();"></input>
 		</td>
 	</tr>
@@ -740,9 +942,7 @@ D014
 					<!--div id="tdiv" style="resize: both; overflow: auto;"--> 
 					<div id="tdiv">
 					<center>
-					<canvas
-						id="drawing_area"
-						width="400" height="200"
+					<canvas id="drawing_area" width="320" height="160"
 						style="margin:2px; padding:2px; border:2px solid #cccccc; resize: both; overflow: auto;"> 
 						<!-- Use: style="margin:2px; padding:2px; border:2px solid #cccccc; display:none;" -->
 						Your browser does not support the HTML5 canvas tag.
@@ -812,16 +1012,25 @@ D014
 					<!-- PC and [I] table -->
 					<td style="vertical-align: top;">
 						<table>
-							<tr><td>
-								<table class="reg">
-									<tr class="reg"><td class="reg">PC</td><td class="reg"><input type="text" id="PC" class="reg" name="PC" size="4"></td></tr>
-								</table>
-							</td></tr>
-							<tr><td>
-								<table class="reg">
-									<tr class="reg"><td class="reg">[ I ]</td><td class="reg"><input type="text" id="[I]" class="reg" name="[I]" size="4"></td></tr>
-								</table>
-							</td></tr>
+							<tr>
+								<td>
+									<table class="reg">
+										<tr class="reg"><td class="reg">PC</td><td class="reg"><input type="text" id="PC" class="reg" name="PC" size="4"></td></tr>
+									</table>
+								</td>
+								<td>
+									<table class="reg">
+										<tr class="reg"><td class="reg"><input type="text" id="PCINST" class="regleft" name="PCINST" size="12"></td></tr>
+									</table>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<table class="reg">
+										<tr class="reg"><td class="reg">[ I ]</td><td class="reg"><input type="text" id="[I]" class="reg" name="[I]" size="4"></td></tr>
+									</table>
+								</td>
+							</tr>
 						</table>
 					</td>
 					</tr>
