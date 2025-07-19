@@ -1240,16 +1240,12 @@ Fx65 - LD Vx, [I]         Restore Register: Read registers V0 through Vx from me
 
 
 <h3>CHIP-8 Program File Format (.ch8)</h3>
-The .ch8 files appear to be binary. Javascript can certainly generate binary data, but it's difficult
-to provide a way to get that into a file. For that reasin
-This program expects all program instructions and all data to be in hexadecimal format. The simplest
-format is just a string of hex digits with arbitrary whitespace allowed. This simple format is always
-loaded from 0 upwards in memory. Additionally, each line of hex text can begin with a hex address followed
-by a colon (:) that will become the starting address for the next byte. This program also recognizes and
-loads programs (and data) from the Intel Hex format.
 
-<p/>
-Note: You can convert a binay <b>.ch8</b> file to hex for the Machine Code window with:<br/>
+The common ".ch8" files used with CHIP-8 contain binary data which is more difficult to handle through a typical
+web browser interface. For that reason, this program uses hexadecimal (hex) representations of binary files so they
+can be easily copied and pasted. So to run a binary ".ch8" file, it must be converted to hex first. There are many
+programs that can do this conversion. One of the most common is the UNIX/Linux "od" (octal dump) command. You can
+use "od" to convert a binary ".ch8" file to a hexadecimal file with:<br/>
 <br/>
 $ od -v -tx1 -An filename<br/>
 <br/>
@@ -1261,6 +1257,9 @@ a2 1e c2 01 32 01 a2 1a d0 14 70 04 30 40 12 00<br/>
 60 00 71 04 31 20 12 00 12 18 80 40 20 10 20 40<br/>
 80 10
 </tt>
+<br/>
+<br/>
+That output can be copied and pasted into the "Machine Code" window of this CHIP-8 simulator to run.
 <hr/>
 
 </div>
