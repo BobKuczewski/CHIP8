@@ -709,7 +709,11 @@ function step1() {
   // Could not use the name "step" for some reason?
   instruction = (mem[PC] << 8) + mem[PC+1];
   // console.log ( "Execute " + pad0(instruction.toString(16).toUpperCase(),4) );
-  if (instruction == 0x00E0) { // CLS
+  if ( (instruction & 0xF000) == 0x0000) {  // SYS NNN
+    // console.log ( "SYS" );
+    window.alert ( "The SYS instruction is at " + hex(PC) + " is not implemented" );
+	  PC = PC + 2;
+  } else if (instruction == 0x00E0) { // CLS
     // console.log ( "CLS" );
     clear_screen();
 	  PC = PC + 2;
