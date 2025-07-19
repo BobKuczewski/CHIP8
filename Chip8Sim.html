@@ -65,6 +65,8 @@ I = 0x0000;
 num_rows = 32;
 num_cols = 64;
 screen = [];
+fg_color = "#AAAAff";
+bg_color = "#000044";
 
 function replaceAll ( s, t, r ) {
 	new_s = (s + " ").trim();
@@ -90,9 +92,9 @@ function hex (val) {
 function draw_screen() {
   da = document.getElementById ("drawing_area");
   ctxt = da.getContext('2d');
-  ctxt.fillStyle = 'black';
+  ctxt.fillStyle = bg_color;
   ctxt.fillRect(0, 0, da.width, da.height);
-  ctxt.fillStyle = 'white';
+  ctxt.fillStyle = fg_color;
   for (r=0; r<num_rows; r++) {
     for (c=0; c<num_cols; c++) {
       if (screen[r][c] != 0) {
@@ -152,7 +154,7 @@ function onload() {
   // Initialize the drawing area
   da = document.getElementById ("drawing_area");
   ctxt = da.getContext('2d');
-  ctxt.fillStyle = 'black';
+  ctxt.fillStyle = bg_color;
   ctxt.fillRect(0, 0, da.width, da.height);
   init_machine();
 }
