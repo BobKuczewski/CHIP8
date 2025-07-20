@@ -82,7 +82,7 @@ num_cols = 64;
 screen = [];
 fg_color = "#AAAAff";
 bg_color = "#000044";
-font_addr = 0x0F00;  // This could be anywhere but stack or program memory
+font_addr = 0x0FA0;  // This could be anywhere but stack or program memory
 
 function replaceAll ( s, t, r ) {
 	new_s = (s + " ").trim();
@@ -889,6 +889,7 @@ function step1() {
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF01E) { // ADD I, Vx
     // console.log ( "LD Vx,DT" );
+    I = I + V[(instruction&0x0F00)>>8];
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF029) { // LD F, Vx
     // It's not clear if the "Vx" should represent:
@@ -1050,72 +1051,101 @@ TOP:    LD V0,01     ; Load x
 
         ; TEST the numeric sprites
 
+        ; Draw hard-coded (no loop)
+
+        LD VA,05     ; Amount to increment I (size of glyphs)
         LD V5,0A     ; Row to draw (Y)
         LD V4,0C     ; Col to draw (X)
         LD F,V0      ; Puts address of '0' in I
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,V1      ; Puts address of '1' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,V2      ; Puts address of '2' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,V3      ; Puts address of '3' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,V4      ; Puts address of '4' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,V5      ; Puts address of '5' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,V6      ; Puts address of '6' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,V7      ; Puts address of '7' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
         LD V5,11     ; Row to draw (Y)
         LD V4,0C     ; Col to draw (X)
-        LD F,V8      ; Puts address of '8' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,V9      ; Puts address of '9' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,VA      ; Puts address of 'A' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,VB      ; Puts address of 'B' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,VC      ; Puts address of 'C' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,VD      ; Puts address of 'D' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,VE      ; Puts address of 'E' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 				ADD V4,05    ; Move right by 5
-        LD F,VF      ; Puts address of 'F' in I
+        ADD I,VA     ; Move I to the next glyph
         DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
+
+        ; Draw again (above and below) with 2 loops
+
+        LD VA,05     ; Amount to increment I (size of glyphs)
+        LD F,V0      ; Puts address of '0' in I
+        LD V5,03     ; Starting Row to draw (Y)
+        LD V4,0C     ; Starting Col to draw (X)
+        LD VC,00     ; Loop counter
+
+NLoop1: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+				ADD V4,05    ; Move right by 5
+        ADD I,VA     ; Move I to the next glyph
+        ADD VC,01    ; Increment the Loop counter
+        SE  VC,08    ; Skip branch when counter == 8
+        JP  NLoop1   ; Continue with next glyph
+
+        LD V5,18     ; Starting Row to draw (Y)
+        LD V4,0C     ; Starting Col to draw (X)
+        LD VC,00     ; Loop counter
+
+NLoop2: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+				ADD V4,05    ; Move right by 5
+        ADD I,VA     ; Move I to the next glyph
+        ADD VC,01    ; Increment the Loop counter
+        SE  VC,08    ; Skip branch when counter == 8
+        JP  NLoop2   ; Continue with next glyph
 
 
         ; TEST JP
@@ -1351,11 +1381,13 @@ D014
 					<td>
 					<center>
 					  <input type="button" name="memup"  value="⇧"  onclick="mem_top = 0x0000; update_display();"></input></br>
+					  <input type="button" name="memup"  value="↟"  onclick="mem_top = Math.max(0,mem_top-1024); update_display();"></input></br>
 					  <input type="button" name="memup"  value="↟"  onclick="mem_top = Math.max(0,mem_top-16); update_display();"></input></br>
 					  <input type="button" name="memup"  value="↑"  onclick="mem_top = Math.max(0,mem_top-2); update_display();"></input></br>
 					  <input type="button" name="memup"  value="⌂"  onclick="mem_top = 0x0200; update_display();"></input></br>
 					  <input type="button" name="memdn"  value="↓"  onclick="mem_top = Math.min(0xffe0,mem_top+2); update_display();"></input></br>
 					  <input type="button" name="memdn"  value="⇓"  onclick="mem_top = Math.min(0xffe0,mem_top+16); update_display();"></input></br>
+					  <input type="button" name="memdn"  value="⇓"  onclick="mem_top = Math.min(0xffe0,mem_top+1024); update_display();"></input></br>
 					  <input type="button" name="memdn"  value="⇩"  onclick="mem_top = 0xffe0; update_display();"></input></br>
 					</center>
 					</td>
@@ -1559,8 +1591,8 @@ Fx07 - LD Vx, DT          Load Vx from Delay Timer: Set Vx = delay timer value.
 Fx0A - LD Vx, K           Load Vx from next Key: Wait for a key press, store the value of the key in Vx.
 Fx15 - LD DT, Vx          Load Delay Timer from Vx: Set delay timer = Vx.
 Fx18 - LD ST, Vx          Load Sound Timer from Vx: Set sound timer = Vx.
-Fx1E - ADD I, Vx          Add Vx to I: Set I = I + Vx.
-Fx29 - LD F, Vx           Load I from Sprite location: Set I = location of sprite for digit Vx.
+Fx1E - ADD I, Vx          &#x2705; Add Vx to I: Set I = I + Vx.
+Fx29 - LD F, Vx           &#x2705; Load I from Sprite location: Set I = location of sprite for digit Vx.
 Fx33 - LD B, Vx           Load BCD from X into Memory[I]: Store BCD representation of Vx in memory locations I, I+1, and I+2.
 Fx55 - LD [I], Vx         Save Registers: Store registers V0 through Vx in memory starting at location I.
 Fx65 - LD Vx, [I]         Restore Register: Read registers V0 through Vx from memory starting at location I.
