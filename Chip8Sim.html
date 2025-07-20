@@ -1042,7 +1042,7 @@ function on_example_change() {
   	<tr>
 		  <td valign="top">
 				<center>
-				<textarea id="source" rows="27" cols="50"
+				<textarea id="source" rows="27" cols="64"
 				   autocomplete="off" autocorrect="off"
 				   autocapitalize="off" spellcheck="false">
 ;===========================;
@@ -1271,7 +1271,7 @@ D014
 <select id="load_example" onchange="on_example_change()">
 <option value="none" selected>-- Select --</option>
 </select>
-<button type="button" onclick="on_example_change();">Load</button>
+<!-- <button type="button" onclick="on_example_change();">Load</button> -->
 <input type="button" name="run"  value="Run"  onclick="assemble(); load(); reset(); run();"></input>
 
  &nbsp; &nbsp; &nbsp; <b>Documentation:</b>
@@ -1500,6 +1500,44 @@ BX:  DATA FF81    ; Image data FF is top, 81 is sides
      DATA 81FF    ; Image data 81 is sides, FF is bottom
 </pre></td></tr>
 
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw boxes in-line">
+;===========================;
+; Generate boxes in CHIP-8  ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;===========================;
+
+TOP: LD I,BX      ; Load sprite address
+     LD V0,0D     ; Load x
+     LD V1,05     ; Load y
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+     ADD V0,05
+     ADD V1,02
+     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+END: JP END       ; Stay here ... forever
+BX:  DATA FF81    ; Image data
+     DATA 8181    ; Image data
+     DATA 8181    ; Image data
+     DATA 81FF    ; Image data
+</pre></td></tr>
+
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw boxes via subroutine">
 ;===========================;
 ; Draw boxes via subroutine ;
@@ -1535,44 +1573,6 @@ BX:  DATA FF81    ; Image data FF is top, 81 is sides
      DATA 8181    ; Image data 81 is sides
      DATA 8181    ; Image data 81 is sides
      DATA 81FF    ; Image data 81 is sides, FF is bottom
-</pre></td></tr>
-
-<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw boxes in-line">
-;===========================;
-; Generate boxes in CHIP-8  ;
-;===========================;
-; Registers:                ;
-;   V0 used for x           ;
-;   V1 used for y           ;
-;===========================;
-
-TOP: LD I,BX      ; Load sprite address
-     LD V0,00     ; Load x
-     LD V1,00     ; Load y
-     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
-     ADD V0,05
-     ADD V1,02
-     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
-     ADD V0,05
-     ADD V1,02
-     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
-     ADD V0,05
-     ADD V1,02
-     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
-     ADD V0,05
-     ADD V1,02
-     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
-     ADD V0,05
-     ADD V1,02
-     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
-     ADD V0,05
-     ADD V1,02
-     DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
-END: JP END       ; Stay here ... forever
-BX:  DATA FF81    ; Image data
-     DATA 8181    ; Image data
-     DATA 8181    ; Image data
-     DATA 81FF    ; Image data
 </pre></td></tr>
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw large box">
@@ -1666,11 +1666,54 @@ VT:  DATA 8080    ; Vertical
      DATA 8080    ; Vertical
 </pre></td></tr>
 
-<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Test Suite">
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw CHIP-8 Digits">
 ;===========================;
-;      Testing  CHIP-8      ;
+;    Draw CHIP-8 Digits     ;
 ;===========================;
-; Draw boxes, CLS on Error  ;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;===========================;
+
+        ; TEST LD
+        ; TEST CALL
+        ; TEST RET
+TOP:    CLS
+
+        ; TEST the 16 numeric sprites with 2 loops
+
+        LD VA,05     ; Amount to increment I (size of glyphs)
+        LD F,V0      ; Puts address of '0' in I
+        LD V5,08     ; Starting Row to draw (Y)
+        LD V4,0C     ; Starting Col to draw (X)
+        LD VC,00     ; Loop counter
+
+NLoop1: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+				ADD V4,05    ; Move right by 5
+        ADD I,VA     ; Move I to the next glyph
+        ADD VC,01    ; Increment the Loop counter
+        SE  VC,08    ; Skip branch when counter == 8
+        JP  NLoop1   ; Continue with next glyph
+
+
+        LD V5,13     ; Starting Row to draw (Y)
+        LD V4,0C     ; Starting Col to draw (X)
+        LD VC,00     ; Loop counter
+
+NLoop2: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+				ADD V4,05    ; Move right by 5
+        ADD I,VA     ; Move I to the next glyph
+        ADD VC,01    ; Increment the Loop counter
+        SE  VC,08    ; Skip branch when counter == 8
+        JP  NLoop2   ; Continue with next glyph
+
+END:    JP END       ; Stay here ... forever
+</pre></td></tr>
+
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="CHIP-8 Test Suite">
+;===========================;
+;     CHIP-8 Test Suite     ;
 ;===========================;
 ; Registers:                ;
 ;   V0 used for x           ;
