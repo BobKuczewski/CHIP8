@@ -2,7 +2,7 @@
 <html>
 
 <head>
-<title>CHIP-8 Simulator</title>
+<title>CHIP-8 Development Environment</title>
 <meta charset="utf-8"/>
 </head>
 
@@ -213,7 +213,7 @@ function load_menus() {
     opt.value = ex[i].id;
     opt.innerHTML = ex[i].id;
     example_menu.appendChild ( opt );
-    console.log ( "Example: " + ex[i].id );
+    // console.log ( "Example: " + ex[i].id );
   }
 }
 
@@ -946,8 +946,8 @@ function run() {
 function stop() {
 }
 
-function on_help_change() {
-  // console.log ( "on_help_change called" );
+function on_doc_change() {
+  // console.log ( "on_doc_change called" );
 	let selector = document.getElementById("show_help");
 	let setting = selector[selector.selectedIndex].value;
 	let n = selector.options.length;
@@ -964,17 +964,13 @@ function on_help_change() {
 
 function on_example_change() {
   // console.log ( "on_example_change called" );
-	let selector = document.getElementById("show_help");
+  // Save the current text (just in case)
+  // save();
+	let selector = document.getElementById("load_example");
 	let setting = selector[selector.selectedIndex].value;
-	let n = selector.options.length;
-	for (let i=0; i<n; i++) {
-	  let ith_id = selector.options[i].value;
-	  if (ith_id == setting) {
-	    document.getElementById(ith_id).hidden = false;
-	  } else {
-	    document.getElementById(ith_id).hidden = true;
-	  }
-	}
+  //console.log ( "Setting = " + setting );
+  //console.log ( document.getElementById(setting).innerHTML );
+  document.getElementById ( "source" ).value = document.getElementById(setting).innerHTML;
 }
 
 </script>
@@ -982,7 +978,7 @@ function on_example_change() {
 <body bgcolor="lightblue" onload="onload()">
 <center>
 
-<span id="title"><b>CHIP-8 Simulator</b></span>
+<span id="title"><b>CHIP-8 Development Environment</b></span>
 <p/>
 <center>
 <table>
@@ -1050,205 +1046,32 @@ function on_example_change() {
 				   autocomplete="off" autocorrect="off"
 				   autocapitalize="off" spellcheck="false">
 ;===========================;
-;      Testing  CHIP-8      ;
-;===========================;
-; Draw boxes, CLS on Error  ;
+; Generate a maze in CHIP-8 ;
 ;===========================;
 ; Registers:                ;
 ;   V0 used for x           ;
 ;   V1 used for y           ;
+;   V2 used for random bit  ;
 ;===========================;
 
-        ; TEST LD
-        ; TEST CALL
-        ; TEST RET
-TOP:    LD V0,01     ; Load x
-        LD V1,01     ; Load y
-        CALL BOX     ; Call the Box Subroutine
+TOP: LD I,R3      ; Load sprite address
+     RND V2,01    ; Put random bit in V2
+     SE V2,01     ; Skip if V2=1 (random)
+     LD I,R1      ; Load a different sprite
+     DRW V0,V1,4  ; Draw at (V0,V1) 4 rows
+     ADD V0,04    ; Add 4 to x coord
+     SE V0,40     ; Skip if at end of V0
+     JP TOP       ; Go back to top
+     LD V0,00     ; At end so go back x=0
+     ADD V1,04    ; Add 4 to y
+     SE V1,20     ; Skip if end of y (done)
+     JP TOP       ; Go back to top
+END: JP END       ; Stay here ... forever
 
-        ; TEST CLS
-        CLS          ; Clear after first to test CLS
-
-        LD V0,37     ; Load x
-        LD V1,01     ; Load y
-        CALL BOX     ; Call the Box Subroutine
-
-        LD V0,01     ; Load x
-        LD V1,17     ; Load y
-        CALL BOX     ; Call the Box Subroutine
-
-        LD V0,37     ; Load x
-        LD V1,17     ; Load y
-        CALL BOX     ; Call the Box Subroutine
-
-        ; Screen should show 3 blocks since first was cleared
-        ; Now that 3 blocks are drawn, use CLR to show failure
-
-
-        ; TEST the 16 numeric sprites with 2 loops
-
-        LD VA,05     ; Amount to increment I (size of glyphs)
-        LD F,V0      ; Puts address of '0' in I
-        LD V5,0A     ; Starting Row to draw (Y)
-        LD V4,0C     ; Starting Col to draw (X)
-        LD VC,00     ; Loop counter
-
-NLoop1: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        ADD VC,01    ; Increment the Loop counter
-        SE  VC,08    ; Skip branch when counter == 8
-        JP  NLoop1   ; Continue with next glyph
-
-
-        LD V5,11     ; Starting Row to draw (Y)
-        LD V4,0C     ; Starting Col to draw (X)
-        LD VC,00     ; Loop counter
-
-NLoop2: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        ADD VC,01    ; Increment the Loop counter
-        SE  VC,08    ; Skip branch when counter == 8
-        JP  NLoop2   ; Continue with next glyph
-
-
-        ; TEST JP
-        JP JPOK
-        CLS          ; Clear if JP fails
-
-        ; TEST SE immediate
-JPOK:   LD V0,55
-        SE V0,55     ; Test SE skipping when equal
-        CLS
-        SE V0,44     ; Test SE not skipping when not equal
-        SE V0,55     ; Test SE skipping when equal
-        CLS
-
-        ; TEST SNE immediate
-        LD V0,55
-        SNE V0,44    ; Test SNE skipping when not equal
-        CLS
-        SNE V0,55    ; Test SNE not skipping when equal
-        SE V0,55
-        CLS
-
-        ; TEST SNE register
-        LD V0,55
-        LD V4,44
-        SNE V0,V4    ; Test SNE skipping when not equal
-        CLS
-        LD V4,55
-        SNE V0,V4    ; Test SNE not skipping when equal
-        SE V0,55
-        CLS
-
-        ; TEST SE register
-        LD V0,55
-        LD V4,44
-        LD V5,55
-        SE V0,V5     ; Test SE skipping when equal
-        CLS
-        SE V0,V4     ; Test SE not skipping when not equal
-        SE V0,55     ; Test SE skipping when equal
-        CLS
-
-        ; TEST LD register to register
-        LD V0,00
-        LD V5,55
-        LD V0,V5
-        SE V0,55
-        CLS
-
-        ; TEST OR Vx,Vy (Vx = Vx | Vy)
-        LD V4,94     ; 10010100 = 94
-        LD V5,CE     ; 11001110 = CE
-        OR V5,V4
-        SE V5,DE     ; 11011110 = DE
-        CLS
-
-        ; TEST AND Vx,Vy (Vx = Vx & Vy)
-        LD  V4,B4    ; 10110100 = B4
-        LD  V5,EE    ; 11101110 = EE
-        AND V5,V4
-        SE  V5,A4    ; 10100100 = A4
-        CLS
-
-        ; TEST XOR Vx,Vy (Vx = Vx ^ Vy)
-        LD  V4,B4    ; 10110100 = B4
-        LD  V5,ED    ; 11101101 = ED
-        XOR V5,V4
-        SE  V5,59    ; 01011001 = 59
-        CLS
-
-        ; TEST ADD Vx,Vy (Vx = Vx + Vy)
-        LD  V4,34    ; 00110100 = 34
-        LD  V5,6D    ; 01101101 = 6D
-        ADD V5,V4
-        SE  V5,A1    ; 10100001 = A1
-        CLS
-
-        ; TEST SUB Vx,Vy (Vx = Vx - Vy)
-        LD  V4,34    ; 00110100 = 34
-        LD  V5,6D    ; 01101101 = 6D
-        ADD V5,V4
-        SE  V5,A1    ; 10100001 = A1
-        CLS
-
-        ; TEST SUB Vx,Vy (Vx = Vx - Vy)
-        LD  V4,A1    ; 10100001 = A1
-        LD  V5,6D    ; 01101101 = 6D
-        SUB V4,V5
-        SE  V4,34    ; 00110100 = 34
-        CLS
-
-        ; TEST SUB Vx,Vy (Vx = Vx - Vy)
-        LD   V4,A1   ; 10100001 = A1
-        LD   V5,6D   ; 01101101 = 6D
-        SUBN V5,V4
-        SE   V5,34   ; 00110100 = 34
-        CLS
-
-        ; TEST SHR Vx,Vy (Vx = Vy >> 1)
-        LD  V4,B4    ; 10110100 = B4
-        LD  V5,A7    ; 10100111 = A7
-        SHR V5,V4
-        SE  V5,5A    ; 01011010 = 5A
-        CLS
-
-        ; TEST SHR Vx,Vy (Vx = Vy >> 1)
-        LD  V5,A7    ; 10100111 = A7
-        SHR V5,V5
-        SE  V5,53    ; 01010011 = 53
-        CLS
-
-        ; TEST SHL Vx,Vy (Vx = Vy LL 1) LL replaces ((
-        LD  V4,08    ; 00001000 = 08
-        LD  V5,AA    ; 10101010 = AA
-        SHL V5,V4
-        SE  V5,10    ; 00010000 = 10
-        CLS
-
-        ; TEST SHL Vx,Vy (Vx = Vy LL 1) LL replaces ((
-        LD  V5,A7    ; 10100111 = A7
-        SHL V5,V5
-        SE  V5,4E    ; 01001110 = 4E
-        CLS
-
-
-END:    JP END       ; Stay here ... forever
-
-BOX:    LD I,BX      ; Load sprite address
-        DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
-        RET
-
-BX:     DATA FF81    ; Image data FF is top, 81 is sides
-        DATA 8181    ; Image data 81 is sides
-        DATA 8181    ; Image data 81 is sides
-        DATA 81FF    ; Image data 81 is sides, FF is bottom
-
-
-
+R1:  DATA 8040    ; Image data
+R2:  DATA 2010    ; Image data
+R3:  DATA 2040    ; Image data
+R4:  DATA 8010    ; Image data
 </textarea>
 
 <!-- Original that should be the default:
@@ -1449,16 +1272,17 @@ D014
 <option value="none" selected>-- Select --</option>
 </select>
 <button type="button" onclick="on_example_change();">Load</button>
+<input type="button" name="run"  value="Run"  onclick="assemble(); load(); reset(); run();"></input>
 
  &nbsp; &nbsp; &nbsp; <b>Documentation:</b>
-<select id="show_help" onchange="on_help_change()">
+<select id="show_help" onchange="on_doc_change()">
 <option value="none" selected>-- Select --</option>
 <option value="introduction">Introduction</option>
 <option value="instruction_set">Instruction Set</option>
 <option value="hex_to_binary">Hex to Binary</option>
 <option value="examples">Examples</option>
 </select>
-<button type="button" onclick="on_help_change();">Show</button>
+<button type="button" onclick="on_doc_change();">Show</button>
 
 
 <p/><hr/><p/>
@@ -1621,13 +1445,11 @@ That output can be copied and pasted into the "Machine Code" window of this CHIP
 
 <center>
 <table>
-<tr><th><h3>Example Programs</h3>Use: select, copy, and paste to run</th></tr>
+<tr><th><h3>Example Programs</h3></th></tr>
 <tr><td>
 <table class="ex">
-<tr class="ex"><th class="ex">Source Code</th><th class="ex">Machine Code</th></tr>
 
-<tr class="ex"><td class="ex" valign="top">
-<pre class="exsrc" id="Generate a Maze">
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Generate a Maze">
 ;===========================;
 ; Generate a maze in CHIP-8 ;
 ;===========================;
@@ -1655,29 +1477,10 @@ R1:  DATA 8040    ; Image data
 R2:  DATA 2010    ; Image data
 R3:  DATA 2040    ; Image data
 R4:  DATA 8010    ; Image data
-</pre></td>
-<td class="ex" valign="top"><pre>
-A21E
-C201
-3201
-A21A
-D014
-7004
-3040
-1200
-6000
-7104
-3120
-1200
-1218
-8040
-2010
-2040
-8010</pre></td></tr>
+</pre></td></tr>
 
 
-<tr class="ex"><td class="ex" valign="top">
-<pre class="exsrc" id="Draw small box">
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw small box">
 ;===========================;
 ; Draw small box in CHIP-8  ;
 ;===========================;
@@ -1695,20 +1498,9 @@ BX:  DATA FF81    ; Image data FF is top, 81 is sides
      DATA 8181    ; Image data 81 is sides
      DATA 8181    ; Image data 81 is sides
      DATA 81FF    ; Image data 81 is sides, FF is bottom
-<td class="ex" valign="top"><pre>
-A20A
-601B
-610B
-D018
-1208
-FF81
-8181
-8181
-81FF
 </pre></td></tr>
 
-<tr class="ex"><td class="ex" valign="top">
-<pre class="exsrc" id="Draw boxes via subroutine">
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw boxes via subroutine">
 ;===========================;
 ; Draw boxes via subroutine ;
 ;===========================;
@@ -1743,31 +1535,9 @@ BX:  DATA FF81    ; Image data FF is top, 81 is sides
      DATA 8181    ; Image data 81 is sides
      DATA 8181    ; Image data 81 is sides
      DATA 81FF    ; Image data 81 is sides, FF is bottom
-<td class="ex" valign="top"><pre>
-6001
-6101
-221A
-6037
-6101
-221A
-6001
-6117
-221A
-6037
-6117
-221A
-1218
-A220
-D018
-00EE
-FF81
-8181
-8181
-81FF
 </pre></td></tr>
 
-<tr class="ex"><td class="ex" valign="top">
-<pre class="exsrc" id="Draw boxes in-line">
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw boxes in-line">
 ;===========================;
 ; Generate boxes in CHIP-8  ;
 ;===========================;
@@ -1802,39 +1572,10 @@ END: JP END       ; Stay here ... forever
 BX:  DATA FF81    ; Image data
      DATA 8181    ; Image data
      DATA 8181    ; Image data
-     DATA 81FF    ; Image data</pre></td>
-<td class="ex" valign="top"><pre>
-A22E
-6000
-6100
-D018
-7005
-7102
-D018
-7005
-7102
-D018
-7005
-7102
-D018
-7005
-7102
-D018
-7005
-7102
-D018
-7005
-7102
-D018
-122C
-FF81
-8181
-8181
-81FF
+     DATA 81FF    ; Image data
 </pre></td></tr>
 
-<tr class="ex"><td class="ex" valign="top">
-<pre class="exsrc" id="Draw large box">
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw large box">
 ;================================;
 ; Generate a large box in CHIP-8 ;
 ;================================;
@@ -1923,79 +1664,208 @@ VT:  DATA 8080    ; Vertical
      DATA 8080    ; Vertical
      DATA 8080    ; Vertical
      DATA 8080    ; Vertical
-</pre></td>
-<td class="ex" valign="top"><pre>
-A282
-6004
-6104
-D011
-600C
-6104
-D011
-6014
-6104
-D011
-601C
-6104
-D011
-6024
-6104
-D011
-602C
-6104
-D011
-6034
-6104
-D011
-A284
-603B
-6104
-D018
-603B
-610C
-D018
-603B
-6114
-D018
-A282
-6034
-611B
-D011
-602C
-611B
-D011
-6024
-611B
-D011
-601C
-611B
-D011
-6014
-611B
-D011
-600C
-611B
-D011
-6004
-611B
-D011
-A284
-6004
-6113
-D018
-6004
-610B
-D018
-6004
-6104
-D018
-1280
-FF00
-8080
-8080
-8080
-8080
 </pre></td></tr>
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Test Suite">
+;===========================;
+;      Testing  CHIP-8      ;
+;===========================;
+; Draw boxes, CLS on Error  ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;===========================;
+
+        ; TEST LD
+        ; TEST CALL
+        ; TEST RET
+TOP:    LD V0,01     ; Load x
+        LD V1,01     ; Load y
+        CALL BOX     ; Call the Box Subroutine
+
+        ; TEST CLS
+        CLS          ; Clear after first to test CLS
+
+        LD V0,37     ; Load x
+        LD V1,01     ; Load y
+        CALL BOX     ; Call the Box Subroutine
+
+        LD V0,01     ; Load x
+        LD V1,17     ; Load y
+        CALL BOX     ; Call the Box Subroutine
+
+        LD V0,37     ; Load x
+        LD V1,17     ; Load y
+        CALL BOX     ; Call the Box Subroutine
+
+        ; Screen should show 3 blocks since first was cleared
+        ; Now that 3 blocks are drawn, use CLR to show failure
+
+
+        ; TEST the 16 numeric sprites with 2 loops
+
+        LD VA,05     ; Amount to increment I (size of glyphs)
+        LD F,V0      ; Puts address of '0' in I
+        LD V5,0A     ; Starting Row to draw (Y)
+        LD V4,0C     ; Starting Col to draw (X)
+        LD VC,00     ; Loop counter
+
+NLoop1: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+				ADD V4,05    ; Move right by 5
+        ADD I,VA     ; Move I to the next glyph
+        ADD VC,01    ; Increment the Loop counter
+        SE  VC,08    ; Skip branch when counter == 8
+        JP  NLoop1   ; Continue with next glyph
+
+
+        LD V5,11     ; Starting Row to draw (Y)
+        LD V4,0C     ; Starting Col to draw (X)
+        LD VC,00     ; Loop counter
+
+NLoop2: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+				ADD V4,05    ; Move right by 5
+        ADD I,VA     ; Move I to the next glyph
+        ADD VC,01    ; Increment the Loop counter
+        SE  VC,08    ; Skip branch when counter == 8
+        JP  NLoop2   ; Continue with next glyph
+
+
+        ; TEST JP
+        JP JPOK
+        CLS          ; Clear if JP fails
+
+        ; TEST SE immediate
+JPOK:   LD V0,55
+        SE V0,55     ; Test SE skipping when equal
+        CLS
+        SE V0,44     ; Test SE not skipping when not equal
+        SE V0,55     ; Test SE skipping when equal
+        CLS
+
+        ; TEST SNE immediate
+        LD V0,55
+        SNE V0,44    ; Test SNE skipping when not equal
+        CLS
+        SNE V0,55    ; Test SNE not skipping when equal
+        SE V0,55
+        CLS
+
+        ; TEST SNE register
+        LD V0,55
+        LD V4,44
+        SNE V0,V4    ; Test SNE skipping when not equal
+        CLS
+        LD V4,55
+        SNE V0,V4    ; Test SNE not skipping when equal
+        SE V0,55
+        CLS
+
+        ; TEST SE register
+        LD V0,55
+        LD V4,44
+        LD V5,55
+        SE V0,V5     ; Test SE skipping when equal
+        CLS
+        SE V0,V4     ; Test SE not skipping when not equal
+        SE V0,55     ; Test SE skipping when equal
+        CLS
+
+        ; TEST LD register to register
+        LD V0,00
+        LD V5,55
+        LD V0,V5
+        SE V0,55
+        CLS
+
+        ; TEST OR Vx,Vy (Vx = Vx | Vy)
+        LD V4,94     ; 10010100 = 94
+        LD V5,CE     ; 11001110 = CE
+        OR V5,V4
+        SE V5,DE     ; 11011110 = DE
+        CLS
+
+        ; TEST AND Vx,Vy (Vx = Vx & Vy)
+        LD  V4,B4    ; 10110100 = B4
+        LD  V5,EE    ; 11101110 = EE
+        AND V5,V4
+        SE  V5,A4    ; 10100100 = A4
+        CLS
+
+        ; TEST XOR Vx,Vy (Vx = Vx ^ Vy)
+        LD  V4,B4    ; 10110100 = B4
+        LD  V5,ED    ; 11101101 = ED
+        XOR V5,V4
+        SE  V5,59    ; 01011001 = 59
+        CLS
+
+        ; TEST ADD Vx,Vy (Vx = Vx + Vy)
+        LD  V4,34    ; 00110100 = 34
+        LD  V5,6D    ; 01101101 = 6D
+        ADD V5,V4
+        SE  V5,A1    ; 10100001 = A1
+        CLS
+
+        ; TEST SUB Vx,Vy (Vx = Vx - Vy)
+        LD  V4,34    ; 00110100 = 34
+        LD  V5,6D    ; 01101101 = 6D
+        ADD V5,V4
+        SE  V5,A1    ; 10100001 = A1
+        CLS
+
+        ; TEST SUB Vx,Vy (Vx = Vx - Vy)
+        LD  V4,A1    ; 10100001 = A1
+        LD  V5,6D    ; 01101101 = 6D
+        SUB V4,V5
+        SE  V4,34    ; 00110100 = 34
+        CLS
+
+        ; TEST SUB Vx,Vy (Vx = Vx - Vy)
+        LD   V4,A1   ; 10100001 = A1
+        LD   V5,6D   ; 01101101 = 6D
+        SUBN V5,V4
+        SE   V5,34   ; 00110100 = 34
+        CLS
+
+        ; TEST SHR Vx,Vy (Vx = Vy >> 1)
+        LD  V4,B4    ; 10110100 = B4
+        LD  V5,A7    ; 10100111 = A7
+        SHR V5,V4
+        SE  V5,5A    ; 01011010 = 5A
+        CLS
+
+        ; TEST SHR Vx,Vy (Vx = Vy >> 1)
+        LD  V5,A7    ; 10100111 = A7
+        SHR V5,V5
+        SE  V5,53    ; 01010011 = 53
+        CLS
+
+        ; TEST SHL Vx,Vy (Vx = Vy LL 1) LL replaces ((
+        LD  V4,08    ; 00001000 = 08
+        LD  V5,AA    ; 10101010 = AA
+        SHL V5,V4
+        SE  V5,10    ; 00010000 = 10
+        CLS
+
+        ; TEST SHL Vx,Vy (Vx = Vy LL 1) LL replaces ((
+        LD  V5,A7    ; 10100111 = A7
+        SHL V5,V5
+        SE  V5,4E    ; 01001110 = 4E
+        CLS
+
+
+END:    JP END       ; Stay here ... forever
+
+BOX:    LD I,BX      ; Load sprite address
+        DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+        RET
+
+BX:     DATA FF81    ; Image data FF is top, 81 is sides
+        DATA 8181    ; Image data 81 is sides
+        DATA 8181    ; Image data 81 is sides
+        DATA 81FF    ; Image data 81 is sides, FF is bottom
+</pre></td></tr>
+
 
 
 </table>
