@@ -709,11 +709,7 @@ function step1() {
   // Could not use the name "step" for some reason?
   instruction = (mem[PC] << 8) + mem[PC+1];
   // console.log ( "Execute " + pad0(instruction.toString(16).toUpperCase(),4) );
-  if ( (instruction & 0xF000) == 0x0000) {  // SYS NNN
-    // console.log ( "SYS" );
-    window.alert ( "The SYS instruction is at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
-  } else if (instruction == 0x00E0) { // CLS
+  if (instruction == 0x00E0) { // CLS
     // console.log ( "CLS" );
     clear_screen();
 	  PC = PC + 2;
@@ -724,6 +720,10 @@ function step1() {
     PC = (mem[SP-1] << 8) | mem[SP];
     PC = PC + 2;
     SP = SP - 2;
+  } else if ( (instruction & 0xF000) == 0x0000) {  // SYS NNN
+    // console.log ( "SYS" );
+    window.alert ( "The SYS instruction is at " + hex(PC) + " is not implemented" );
+	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x1000) {  // JP NNN
     // console.log ( "JP" );
     PC = instruction & 0xFFF;
@@ -750,10 +750,18 @@ function step1() {
 		}
   } else if ( (instruction & 0xF000) == 0x4000) { // SNE Vx,byte
     // console.log ( "SNE - Skip if Not Equal immediate" );
-	  PC = PC + 2;
+    if ( V[(instruction&0x0F00)>>8] != (instruction&0x00FF) ) {
+		  PC = PC + 4;
+		} else {
+		  PC = PC + 2;
+		}
   } else if ( (instruction & 0xF000) == 0x5000) { // SE Vx,Vy
     // console.log ( "SE - Skip if Equal Reg" );
-	  PC = PC + 2;
+    if ( V[(instruction&0x0F00)>>8] == V[(instruction&0x00F0)>>4]  ) {
+		  PC = PC + 4;
+		} else {
+		  PC = PC + 2;
+		}
   } else if ( (instruction & 0xF000) == 0x6000) { // LD Vx,byte
     // console.log ( "LD immediate with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     V[(instruction&0x0F00)>>8] = instruction&0x00FF;
@@ -764,35 +772,48 @@ function step1() {
     V[x] = V[x] + (instruction&0x00FF);
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8000) { // LD Vx,Vy
-    // console.log ( "LD Reg" );
+    // console.log ( "LD Vx,Vy" );
+    V[(instruction&0x0F00)>>8] = V[(instruction&0x00F0)>>4];
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8001) { // OR Vx,Vy
     // console.log ( "OR Reg" );
+    V[(instruction&0x0F00)>>8] = V[(instruction&0x0F00)>>8] | V[(instruction&0x00F0)>>4];
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8002) { // AND Vx,Vy
     // console.log ( "AND Reg" );
+    V[(instruction&0x0F00)>>8] = V[(instruction&0x0F00)>>8] & V[(instruction&0x00F0)>>4];
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8003) { // XOR Vx,Vy
     // console.log ( "XOR Reg" );
+    V[(instruction&0x0F00)>>8] = V[(instruction&0x0F00)>>8] ^ V[(instruction&0x00F0)>>4];
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8004) { // ADD Vx,Vy
     // console.log ( "ADD Reg" );
+    V[(instruction&0x0F00)>>8] = V[(instruction&0x0F00)>>8] + V[(instruction&0x00F0)>>4];
 	  PC = PC + 2;
-  } else if ( (instruction & 0xF00F) == 0x8005) { // SUB Vx,Vy
+  } else if ( (instruction & 0xF00F) == 0x8005) { // SUB Vx,Vy: Vx = Vx - Vy
     // console.log ( "SUB Reg" );
+    V[(instruction&0x0F00)>>8] = V[(instruction&0x0F00)>>8] - V[(instruction&0x00F0)>>4];
 	  PC = PC + 2;
-  } else if ( (instruction & 0xF00F) == 0x8006) { // SHR Vx,Vy
+  } else if ( (instruction & 0xF00F) == 0x8006) { // SHR Vx,Vy: Vx = Vy >> 1
     // console.log ( "SHR" );
+    V[(instruction&0x0F00)>>8] = V[(instruction&0x00F0)>>4] >> 1;
 	  PC = PC + 2;
-  } else if ( (instruction & 0xF00F) == 0x8007) { // SUBN Vx,Vy
+  } else if ( (instruction & 0xF00F) == 0x8007) { // SUBN Vx,Vy: Vx = Vy - Vx
     // console.log ( "SUBN" );
+    V[(instruction&0x0F00)>>8] = V[(instruction&0x00F0)>>4] - V[(instruction&0x0F00)>>8];
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x800E) { // SHL Vx,Vy
     // console.log ( "SHL" );
+    V[(instruction&0x0F00)>>8] = (V[(instruction&0x00F0)>>4] << 1) & 0xff;
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x9000) { // SNE Vx,Vy
     // console.log ( "SNE - Skip if Not Equal Reg" );
-	  PC = PC + 2;
+    if ( V[(instruction&0x0F00)>>8] != V[(instruction&0x00F0)>>4] ) {
+		  PC = PC + 4;
+		} else {
+		  PC = PC + 2;
+		}
   } else if ( (instruction & 0xF000) == 0xA000) { // I = NNN
     // console.log ( "LD I, addr" );
     I = instruction & 0xFFF;
@@ -955,6 +976,183 @@ function on_help_change() {
 				   autocomplete="off" autocorrect="off"
 				   autocapitalize="off" spellcheck="false">
 ;===========================;
+;      Testing  CHIP-8      ;
+;===========================;
+; Draw boxes, CLS on Error  ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;===========================;
+
+        ; TEST LD
+        ; TEST CALL
+        ; TEST RET
+TOP:    LD V0,01     ; Load x
+        LD V1,01     ; Load y
+        CALL BOX     ; Call the Box Subroutine
+
+        ; TEST CLS
+        CLS          ; Clear after first to test CLS
+
+        LD V0,37     ; Load x
+        LD V1,01     ; Load y
+        CALL BOX     ; Call the Box Subroutine
+
+        LD V0,01     ; Load x
+        LD V1,17     ; Load y
+        CALL BOX     ; Call the Box Subroutine
+
+        LD V0,37     ; Load x
+        LD V1,17     ; Load y
+        CALL BOX     ; Call the Box Subroutine
+
+        ; Screen should show 3 blocks since first was cleared
+        ; Now that 3 blocks are drawn, use CLR to show failure
+
+        ; TEST JP
+        JP JPOK
+        CLS          ; Clear if JP fails
+
+        ; TEST SE immediate
+JPOK:   LD V0,55
+        SE V0,55     ; Test SE skipping when equal
+        CLS
+        SE V0,44     ; Test SE not skipping when not equal
+        SE V0,55     ; Test SE skipping when equal
+        CLS
+
+        ; TEST SNE immediate
+        LD V0,55
+        SNE V0,44    ; Test SNE skipping when not equal
+        CLS
+        SNE V0,55    ; Test SNE not skipping when equal
+        SE V0,55
+        CLS
+
+        ; TEST SNE register
+        LD V0,55
+        LD V4,44
+        SNE V0,V4    ; Test SNE skipping when not equal
+        CLS
+        LD V4,55
+        SNE V0,V4    ; Test SNE not skipping when equal
+        SE V0,55
+        CLS
+
+        ; TEST SE register
+        LD V0,55
+        LD V4,44
+        LD V5,55
+        SE V0,V5     ; Test SE skipping when equal
+        CLS
+        SE V0,V4     ; Test SE not skipping when not equal
+        SE V0,55     ; Test SE skipping when equal
+        CLS
+
+        ; TEST LD register to register
+        LD V0,00
+        LD V5,55
+        LD V0,V5
+        SE V0,55
+        CLS
+
+        ; TEST OR Vx,Vy (Vx = Vx | Vy)
+        LD V4,94     ; 10010100 = 94
+        LD V5,CE     ; 11001110 = CE
+        OR V5,V4
+        SE V5,DE     ; 11011110 = DE
+        CLS
+
+        ; TEST AND Vx,Vy (Vx = Vx & Vy)
+        LD  V4,B4    ; 10110100 = B4
+        LD  V5,EE    ; 11101110 = EE
+        AND V5,V4
+        SE  V5,A4    ; 10100100 = A4
+        CLS
+
+        ; TEST XOR Vx,Vy (Vx = Vx ^ Vy)
+        LD  V4,B4    ; 10110100 = B4
+        LD  V5,ED    ; 11101101 = ED
+        XOR V5,V4
+        SE  V5,59    ; 01011001 = 59
+        CLS
+
+        ; TEST ADD Vx,Vy (Vx = Vx + Vy)
+        LD  V4,34    ; 00110100 = 34
+        LD  V5,6D    ; 01101101 = 6D
+        ADD V5,V4
+        SE  V5,A1    ; 10100001 = A1
+        CLS
+
+        ; TEST SUB Vx,Vy (Vx = Vx - Vy)
+        LD  V4,34    ; 00110100 = 34
+        LD  V5,6D    ; 01101101 = 6D
+        ADD V5,V4
+        SE  V5,A1    ; 10100001 = A1
+        CLS
+
+        ; TEST SUB Vx,Vy (Vx = Vx - Vy)
+        LD  V4,A1    ; 10100001 = A1
+        LD  V5,6D    ; 01101101 = 6D
+        SUB V4,V5
+        SE  V4,34    ; 00110100 = 34
+        CLS
+
+        ; TEST SUB Vx,Vy (Vx = Vx - Vy)
+        LD   V4,A1   ; 10100001 = A1
+        LD   V5,6D   ; 01101101 = 6D
+        SUBN V5,V4
+        SE   V5,34   ; 00110100 = 34
+        CLS
+
+        ; TEST SHR Vx,Vy (Vx = Vy >> 1)
+        LD  V4,B4    ; 10110100 = B4
+        LD  V5,A7    ; 10100111 = A7
+        SHR V5,V4
+        SE  V5,5A    ; 01011010 = 5A
+        CLS
+
+        ; TEST SHR Vx,Vy (Vx = Vy >> 1)
+        LD  V5,A7    ; 10100111 = A7
+        SHR V5,V5
+        SE  V5,53    ; 01010011 = 53
+        CLS
+
+        ; TEST SHL Vx,Vy (Vx = Vy LL 1) LL replaces ((
+        LD  V4,08    ; 00001000 = 08
+        LD  V5,AA    ; 10101010 = AA
+        SHL V5,V4
+        SE  V5,10    ; 00010000 = 10
+        CLS
+
+        ; TEST SHL Vx,Vy (Vx = Vy LL 1) LL replaces ((
+        LD  V5,A7    ; 10100111 = A7
+        SHL V5,V5
+        SE  V5,4E    ; 01001110 = 4E
+        CLS
+
+
+END:    JP END       ; Stay here ... forever
+
+BOX:    LD I,BX      ; Load sprite address
+        DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+        RET
+
+BX:     DATA FF81    ; Image data FF is top, 81 is sides
+        DATA 8181    ; Image data 81 is sides
+        DATA 8181    ; Image data 81 is sides
+        DATA 81FF    ; Image data 81 is sides, FF is bottom
+
+
+
+</textarea>
+
+<!-- Original that should be the default:
+				<textarea id="source" rows="27" cols="50"
+				   autocomplete="off" autocorrect="off"
+				   autocapitalize="off" spellcheck="false">
+;===========================;
 ; Generate a maze in CHIP-8 ;
 ;===========================;
 ; Registers:                ;
@@ -981,6 +1179,7 @@ R1:  DATA 8040    ; Image data
 R2:  DATA 2010    ; Image data
 R3:  DATA 2040    ; Image data
 R4:  DATA 8010    ; Image data</textarea>
+-->
 
 				</center>
 			</td>
@@ -1228,20 +1427,20 @@ nnnn - DATA nnnn          &#x2705; Initialize a data word (all values in hex)
 1nnn - JP addr            &#x2705; Jump to location nnn.
 2nnn - CALL addr          &#x2705; Call subroutine at nnn.
 3xkk - SE Vx, byte        &#x2705; Skip If Equal Immediate: Skip next instruction if Vx = kk.
-4xkk - SNE Vx, byte       Skip If Not Equal Immediate: Skip next instruction if Vx != kk.
-5xy0 - SE Vx, Vy          Skip If Equal Register: Skip next instruction if Vx = Vy.
+4xkk - SNE Vx, byte       &#x2705; Skip If Not Equal Immediate: Skip next instruction if Vx != kk.
+5xy0 - SE Vx, Vy          &#x2705; Skip If Equal Register: Skip next instruction if Vx = Vy.
 6xkk - LD Vx, byte        &#x2705; Load Immediate: Set Vx = kk.
 7xkk - ADD Vx, byte       &#x2705; Add Immediate: Set Vx = Vx + kk.
-8xy0 - LD Vx, Vy          Load Register: Set Vx = Vy.
-8xy1 - OR Vx, Vy          Or Register: Set Vx = Vx OR Vy.
-8xy2 - AND Vx, Vy         And Register: Set Vx = Vx AND Vy.
-8xy3 - XOR Vx, Vy         XOR Register: Set Vx = Vx XOR Vy.
-8xy4 - ADD Vx, Vy         Add Register: Set Vx = Vx + Vy, set VF = carry.
-8xy5 - SUB Vx, Vy         Sub Register: Set Vx = Vx - Vy, set VF = NOT borrow.
-8xy6 - SHR Vx {, Vy}      Shift Right: Set Vx = Vx SHR 1.
-8xy7 - SUBN Vx, Vy        Sub Negative Register: Set Vx = Vy - Vx, set VF = NOT borrow.
-8xyE - SHL Vx {, Vy}      Shift Left: Set Vx = Vx SHL 1.
-9xy0 - SNE Vx, Vy         Skip If Not Equal: Skip next instruction if Vx != Vy.
+8xy0 - LD Vx, Vy          &#x2705; Load Register: Set Vx = Vy.
+8xy1 - OR Vx, Vy          &#x2705; Or Register: Set Vx = Vx OR Vy.
+8xy2 - AND Vx, Vy         &#x2705; And Register: Set Vx = Vx AND Vy.
+8xy3 - XOR Vx, Vy         &#x2705; XOR Register: Set Vx = Vx XOR Vy.
+8xy4 - ADD Vx, Vy         &#x2705; Add Register: Set Vx = Vx + Vy, set VF = carry.
+8xy5 - SUB Vx, Vy         &#x2705; Sub Register: Set Vx = Vx - Vy, set VF = NOT borrow.
+8xy6 - SHR Vx {, Vy}      &#x2705; Shift Right: Set Vx = Vx SHR 1.
+8xy7 - SUBN Vx, Vy        &#x2705; Sub Negative Register: Set Vx = Vy - Vx, set VF = NOT borrow.
+8xyE - SHL Vx {, Vy}      &#x2705; Shift Left: Set Vx = Vx SHL 1.
+9xy0 - SNE Vx, Vy         &#x2705; Skip If Not Equal: Skip next instruction if Vx != Vy.
 Annn - LD I, addr         &#x2705; Load I Immediate: Set I = nnn.
 Bnnn - JP V0, addr        &#x2705; Jump to V0 with offset nnn.
 Cxkk - RND Vx, byte       &#x2705; Rand: Set Vx to a random number (0 to 255) AND byte value.
