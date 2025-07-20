@@ -180,7 +180,7 @@ function init_machine() {
 		[0xF0, 0x80, 0xF0, 0x80, 0x80]  // F
 	];
 	i = font_addr;
-	console.log ( "Loading Font Data" );
+	// console.log ( "Loading Font Data" );
 	for (r=0; r<font_data.length; r++) {
 		for (c=0; c<font_data[r].length; c++) {
 			mem[i] = font_data[r][c];
@@ -205,7 +205,20 @@ function init_machine() {
   draw_screen();
 }
 
+function load_menus() {
+  example_menu = document.getElementById("load_example");
+  ex = document.getElementsByClassName("exsrc");
+  for (i=0; i<ex.length; i++) {
+    opt = document.createElement ( "option" );
+    opt.value = ex[i].id;
+    opt.innerHTML = ex[i].id;
+    example_menu.appendChild ( opt );
+    console.log ( "Example: " + ex[i].id );
+  }
+}
+
 function onload() {
+  load_menus();
   init_machine();
   clear_screen();
 }
@@ -248,10 +261,13 @@ function get_vx_comma_vy ( s ) {
   return ( result );
 }
 
-function assemble() {
+function assemble_text ( srctxt ) {
   // console.log ("Assemble code");
-  srctxt = document.getElementById ( "source" ).value;
+  // srctxt = document.getElementById ( "source" ).value;
   // console.log ( "Text = " + srctxt );
+
+  // Initialize the binary text outpu
+  bintxt = "";
 
   // Normalize line endings and remove empty lines
 	text = replaceAll( srctxt, "\r", "\n");
@@ -335,9 +351,6 @@ function assemble() {
 	  }
 	}
 
-  // Clear the machine code window
-  mcwin = document.getElementById ( "machine" );
-  mcwin.value = "";
 	// Process the lines one by one
 	for (l=0; l<lines.length; l++) {
 	  line = lines[l].toUpperCase().trim();
@@ -352,26 +365,26 @@ function assemble() {
 				line = line.substr(line.indexOf(":")+1).trim();
 		  }
 		  if (line.slice(0,5) == "DATA ") {
-				mcwin.value += line.slice(5).trim() + "\n";
+				bintxt += line.slice(5).trim() + "\n";
 		  } else if (line.slice(0,4) == "SYS ") {
-				mcwin.value += "0" + line.slice(4).trim() + "\n";
+				bintxt += "0" + line.slice(4).trim() + "\n";
 		  } else if (line.slice(0,3) == "CLS") {
-				mcwin.value += "00E0\n";
+				bintxt += "00E0\n";
 		  } else if (line.slice(0,3) == "RET") {
-				mcwin.value += "00EE\n";
+				bintxt += "00EE\n";
 		  } else if (line.slice(0,3) == "JP ") {
 				// JP can take the following forms:
 				//   JP nnn    -->  1nnn
 				//   JP V0,nnn -->  Bnnn
 				if (line.indexOf(",") >= 0) {
-					mcwin.value += "B" + line.slice(line.indexOf(",")+1).trim() + "\n";
+					bintxt += "B" + line.slice(line.indexOf(",")+1).trim() + "\n";
 			  } else {
-					mcwin.value += "1" + line.slice(2).trim() + "\n";
+					bintxt += "1" + line.slice(2).trim() + "\n";
 			  }
 		  } else if (line.slice(0,5) == "CALL ") {
 				// CALL takes the following form:
 				//   CALL nnn
-				mcwin.value += "2" + line.slice(5).trim() + "\n";
+				bintxt += "2" + line.slice(5).trim() + "\n";
 		  } else if (line.slice(0,3) == "SE ") {
 				// SE (Skip when Equal) can take the following forms:
 				//   SE Vx,byte -> 3xbb
@@ -379,11 +392,11 @@ function assemble() {
 				if (line.split(",")[1].indexOf("V") < 0) {
 				  // SE Vx,byte -> 3xbb
 				  vb = get_vx_comma_b ( line.slice(3) );
-					mcwin.value += "3" + vb[0] + vb[1] + "\n";
+					bintxt += "3" + vb[0] + vb[1] + "\n";
 				} else {
 					// SE Vx,Vy   -> 5xy0
 				  vv = get_vx_comma_vy ( line.slice(3) );
-					mcwin.value += "5" + vv[0] + vv[1] + "0" + "\n";
+					bintxt += "5" + vv[0] + vv[1] + "0" + "\n";
 			  }
 		  } else if (line.slice(0,4) == "SNE ") {
 				// SNE (Skip when Not Equal) can take the following forms:
@@ -392,11 +405,11 @@ function assemble() {
 				if (line.split(",")[1].indexOf("V") < 0) {
 				  // SNE Vx,byte -> 4xbb
 				  vb = get_vx_comma_b ( line.slice(3) );
-					mcwin.value += "4" + vb[0] + vb[1] + "\n";
+					bintxt += "4" + vb[0] + vb[1] + "\n";
 				} else {
 					// SNE Vx,Vy   -> 9xy0
 				  vv = get_vx_comma_vy ( line.slice(3) );
-					mcwin.value += "9" + vv[0] + vv[1] + "0" + "\n";
+					bintxt += "9" + vv[0] + vv[1] + "0" + "\n";
 			  }
 		  } else if (line.slice(0,3) == "LD ") {
 				// LD (Load) can take the following forms:
@@ -417,39 +430,39 @@ function assemble() {
 				// Handle the easy ones first
 				if (pars[0] == "I") {
 				  // LD I,nnn   -> Annn
-					mcwin.value += "A" + pars[1].trim() + "\n";
+					bintxt += "A" + pars[1].trim() + "\n";
 				} else if (pars[0] == "DT") {
 				  // LD DT,Vx   -> Fx15
-					mcwin.value += "F" + pars[1].slice(1).trim() + "15\n";
+					bintxt += "F" + pars[1].slice(1).trim() + "15\n";
 				} else if (pars[0] == "ST") {
 					// LD ST,Vx   -> Fx18
-					mcwin.value += "F" + pars[1].slice(1).trim() + "18\n";
+					bintxt += "F" + pars[1].slice(1).trim() + "18\n";
 				} else if (pars[0] == "F") {
 					// LD F,Vx    -> Fx29
-					mcwin.value += "F" + pars[1].slice(1).trim() + "29\n";
+					bintxt += "F" + pars[1].slice(1).trim() + "29\n";
 				} else if (pars[0] == "B") {
 					// LD B,Vx    -> Fx33
-					mcwin.value += "F" + pars[1].slice(1).trim() + "33\n";
+					bintxt += "F" + pars[1].slice(1).trim() + "33\n";
 				} else if (pars[0] == "[I]") {
 					// LD [I],Vx  -> Fx55
-					mcwin.value += "F" + pars[1].slice(1).trim() + "55\n";
+					bintxt += "F" + pars[1].slice(1).trim() + "55\n";
 				} else if (pars[1] == "DT") {
 				  // LD Vx,DT   -> Fx07
-					mcwin.value += "F" + pars[0].slice(1).trim() + "07\n";
+					bintxt += "F" + pars[0].slice(1).trim() + "07\n";
 				} else if (pars[1] == "K") {
 				  // LD Vx,K    -> Fx0A
 				} else if (pars[1] == "[I]") {
 					// LD Vx,[I]  -> Fx65
-					mcwin.value += "F" + pars[0].slice(1).trim() + "65\n";
+					bintxt += "F" + pars[0].slice(1).trim() + "65\n";
 				} else {
 				  if (line.split(",")[1].indexOf("V") < 0) {
 						// LD Vx,byte -> 6xbb
 						vb = get_vx_comma_b ( line.slice(3) );
-					  mcwin.value += "6" + vb[0] + vb[1] + "\n";
+					  bintxt += "6" + vb[0] + vb[1] + "\n";
 				  } else {
 						// LD Vx,Vy   -> 8xy0
 						vv = get_vx_comma_vy ( line.slice(3) );
-						mcwin.value += "8" + vv[0] + vv[1] + "0" + "\n";
+						bintxt += "8" + vv[0] + vv[1] + "0" + "\n";
 					}
 				}
 		  } else if (line.slice(0,4) == "ADD ") {
@@ -462,30 +475,30 @@ function assemble() {
 				pars[1] = pars[1].trim();
 				if (pars[0] == "I") {
 				  // ADD I,Vx    -> Fx1E
-					mcwin.value += "F" + pars[1].slice(1).trim() + "1E\n";
+					bintxt += "F" + pars[1].slice(1).trim() + "1E\n";
 			  } else {
 				  if (pars[1].indexOf("V") < 0) {
 						// ADD Vx,byte -> 7xbb
 						vb = get_vx_comma_b ( line.slice(3) );
-					  mcwin.value += "7" + vb[0] + vb[1] + "\n";
+					  bintxt += "7" + vb[0] + vb[1] + "\n";
 				  } else {
 				  	// ADD Vx,Vy   -> 8xy0
 						vv = get_vx_comma_vy ( line.slice(3) );
-					  mcwin.value += "8" + vv[0] + vv[1] + "4" + "\n";
+					  bintxt += "8" + vv[0] + vv[1] + "4" + "\n";
 					}
 			  }
 		  } else if (line.slice(0,3) == "OR ") {
 				vv = get_vx_comma_vy ( line.slice(2).trim() );
-			  mcwin.value += "8" + vv[0] + vv[1] + "1" + "\n";
+			  bintxt += "8" + vv[0] + vv[1] + "1" + "\n";
 		  } else if (line.slice(0,4) == "AND ") {
 				vv = get_vx_comma_vy ( line.slice(3).trim() );
-			  mcwin.value += "8" + vv[0] + vv[1] + "2" + "\n";
+			  bintxt += "8" + vv[0] + vv[1] + "2" + "\n";
 		  } else if (line.slice(0,4) == "XOR ") {
 				vv = get_vx_comma_vy ( line.slice(3).trim() );
-			  mcwin.value += "8" + vv[0] + vv[1] + "3" + "\n";
+			  bintxt += "8" + vv[0] + vv[1] + "3" + "\n";
 		  } else if (line.slice(0,4) == "SUB ") {
 				vv = get_vx_comma_vy ( line.slice(3).trim() );
-			  mcwin.value += "8" + vv[0] + vv[1] + "5" + "\n";
+			  bintxt += "8" + vv[0] + vv[1] + "5" + "\n";
 		  } else if (line.slice(0,4) == "SHR ") {
 				if (line.indexOf(",") >= 0) {
 				  // SHR Vx,Vy
@@ -497,10 +510,10 @@ function assemble() {
 				  // SHR Vx
 				  vv = [line.slice(3).trim()[1],"1"];
 				}
-			  mcwin.value += "8" + vv[0] + vv[1] + "6" + "\n";
+			  bintxt += "8" + vv[0] + vv[1] + "6" + "\n";
 		  } else if (line.slice(0,5) == "SUBN ") {
 				vv = get_vx_comma_vy ( line.slice(4).trim() );
-			  mcwin.value += "8" + vv[0] + vv[1] + "7" + "\n";
+			  bintxt += "8" + vv[0] + vv[1] + "7" + "\n";
 		  } else if (line.slice(0,4) == "SHL ") {
 				if (line.indexOf(",") >= 0) {
 				  // SHL Vx,Vy
@@ -512,27 +525,34 @@ function assemble() {
 				  // SHL Vx
 				  vv = [line.slice(3).trim()[1],"1"];
 				}
-			  mcwin.value += "8" + vv[0] + vv[1] + "E" + "\n";
+			  bintxt += "8" + vv[0] + vv[1] + "E" + "\n";
 		  } else if (line.slice(0,4) == "RND ") {
 				vb = get_vx_comma_b ( line.slice(3) );
-			  mcwin.value += "C" + vb[0] + vb[1] + "\n";
+			  bintxt += "C" + vb[0] + vb[1] + "\n";
 		  } else if (line.slice(0,4) == "DRW ") {
 		  	pars = line.slice(3).split(",");
 		  	pars[0] = pars[0].trim();
 		  	pars[1] = pars[1].trim();
 		  	pars[2] = pars[2].trim();
-			  mcwin.value += "D" + pars[0][1] + pars[1][1] + pars[2][0] + "\n";
+			  bintxt += "D" + pars[0][1] + pars[1][1] + pars[2][0] + "\n";
 		  } else if (line.slice(0,4) == "SKP ") {
 		  	vx = line.slice(3).trim();
-			  mcwin.value += "E" + vx[1] + "9E" + "\n";
+			  bintxt += "E" + vx[1] + "9E" + "\n";
 		  } else if (line.slice(0,5) == "SKNP ") {
 		  	vx = line.slice(4).trim();
-			  mcwin.value += "E" + vx[1] + "A1" + "\n";
+			  bintxt += "E" + vx[1] + "A1" + "\n";
 		  } else {
-				mcwin.value += "[??]" + line + "\n";
+				bintxt += "[??]" + line + "\n";
 		  }
 		}
   }
+  return ( bintxt );
+}
+
+function assemble() {
+  // console.log ("Assemble source code window to machine code window");
+  srctxt = document.getElementById ( "source" ).value;
+  document.getElementById ( "machine" ).value = assemble_text ( srctxt );
 }
 
 function get_machine_lines ( text_in ) {
@@ -928,6 +948,22 @@ function stop() {
 
 function on_help_change() {
   // console.log ( "on_help_change called" );
+	let selector = document.getElementById("show_help");
+	let setting = selector[selector.selectedIndex].value;
+	let n = selector.options.length;
+	for (let i=0; i<n; i++) {
+	  let ith_id = selector.options[i].value;
+	  if (ith_id == setting) {
+	    document.getElementById(ith_id).hidden = false;
+	  } else {
+	    document.getElementById(ith_id).hidden = true;
+	  }
+	}
+}
+
+
+function on_example_change() {
+  // console.log ( "on_example_change called" );
 	let selector = document.getElementById("show_help");
 	let setting = selector[selector.selectedIndex].value;
 	let n = selector.options.length;
@@ -1407,7 +1443,14 @@ D014
 
 <p/><hr/><p/>
 
-<h3>Documentation and Examples &nbsp;
+
+<b>Examples:</b>
+<select id="load_example" onchange="on_example_change()">
+<option value="none" selected>-- Select --</option>
+</select>
+<button type="button" onclick="on_example_change();">Load</button>
+
+ &nbsp; &nbsp; &nbsp; <b>Documentation:</b>
 <select id="show_help" onchange="on_help_change()">
 <option value="none" selected>-- Select --</option>
 <option value="introduction">Introduction</option>
@@ -1415,8 +1458,8 @@ D014
 <option value="hex_to_binary">Hex to Binary</option>
 <option value="examples">Examples</option>
 </select>
-<button type="button" onclick="on_help_change();">Load</button>
-</h3>
+<button type="button" onclick="on_help_change();">Show</button>
+
 
 <p/><hr/><p/>
 
@@ -1583,7 +1626,8 @@ That output can be copied and pasted into the "Machine Code" window of this CHIP
 <table class="ex">
 <tr class="ex"><th class="ex">Source Code</th><th class="ex">Machine Code</th></tr>
 
-<tr class="ex"><td class="ex" valign="top"><pre>
+<tr class="ex"><td class="ex" valign="top">
+<pre class="exsrc" id="Generate a Maze">
 ;===========================;
 ; Generate a maze in CHIP-8 ;
 ;===========================;
@@ -1632,7 +1676,8 @@ D014
 8010</pre></td></tr>
 
 
-<tr class="ex"><td class="ex" valign="top"><pre>
+<tr class="ex"><td class="ex" valign="top">
+<pre class="exsrc" id="Draw small box">
 ;===========================;
 ; Draw small box in CHIP-8  ;
 ;===========================;
@@ -1662,7 +1707,8 @@ FF81
 81FF
 </pre></td></tr>
 
-<tr class="ex"><td class="ex" valign="top"><pre>
+<tr class="ex"><td class="ex" valign="top">
+<pre class="exsrc" id="Draw boxes via subroutine">
 ;===========================;
 ; Draw boxes via subroutine ;
 ;===========================;
@@ -1720,7 +1766,8 @@ FF81
 81FF
 </pre></td></tr>
 
-<tr class="ex"><td class="ex" valign="top"><pre>
+<tr class="ex"><td class="ex" valign="top">
+<pre class="exsrc" id="Draw boxes in-line">
 ;===========================;
 ; Generate boxes in CHIP-8  ;
 ;===========================;
@@ -1786,7 +1833,8 @@ FF81
 81FF
 </pre></td></tr>
 
-<tr class="ex"><td class="ex" valign="top"><pre>
+<tr class="ex"><td class="ex" valign="top">
+<pre class="exsrc" id="Draw large box">
 ;================================;
 ; Generate a large box in CHIP-8 ;
 ;================================;
