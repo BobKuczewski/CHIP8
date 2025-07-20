@@ -72,16 +72,17 @@ th.ex {
 <script>
 
 mem = [];
-mem_top = 0x0200;
+mem_top = 0x0200; // Address of memory shown at top of the memory list
 V = [];
-PC = 0x0200;
-SP = 0x0001;
+PC = 0x0200; // Program Counter typically starts at 0x0200
+SP = 0x0001; // Set stack pointer at 1 since it is incremented before use
 I = 0x0000;
 num_rows = 32;
 num_cols = 64;
 screen = [];
 fg_color = "#AAAAff";
 bg_color = "#000044";
+font_addr = 0x0F00;  // This could be anywhere but stack or program memory
 
 function replaceAll ( s, t, r ) {
 	new_s = (s + " ").trim();
@@ -156,6 +157,36 @@ function init_machine() {
   for (i=0; i<0x10000; i++) {
     mem.push(0xff);
   }
+  // Load the Font data (80 bytes total)
+  // Each entry is 4 columns x 5 rows
+  // Sprites are 8 columns wide but
+  // these only use the first 4 bits
+  font_data = [
+		[0xF0, 0x90, 0x90, 0x90, 0xF0], // 0
+		[0x20, 0x60, 0x20, 0x20, 0x70], // 1
+		[0xF0, 0x10, 0xF0, 0x80, 0xF0], // 2
+		[0xF0, 0x10, 0xF0, 0x10, 0xF0], // 3
+		[0x90, 0x90, 0xF0, 0x10, 0x10], // 4
+		[0xF0, 0x80, 0xF0, 0x10, 0xF0], // 5
+		[0xF0, 0x80, 0xF0, 0x90, 0xF0], // 6
+		[0xF0, 0x10, 0x20, 0x40, 0x40], // 7
+		[0xF0, 0x90, 0xF0, 0x90, 0xF0], // 8
+		[0xF0, 0x90, 0xF0, 0x10, 0xF0], // 9
+		[0xF0, 0x90, 0xF0, 0x90, 0x90], // A
+		[0xE0, 0x90, 0xE0, 0x90, 0xE0], // B
+		[0xF0, 0x80, 0x80, 0x80, 0xF0], // C
+		[0xE0, 0x90, 0x90, 0x90, 0xE0], // D
+		[0xF0, 0x80, 0xF0, 0x80, 0xF0], // E
+		[0xF0, 0x80, 0xF0, 0x80, 0x80]  // F
+	];
+	i = font_addr;
+	console.log ( "Loading Font Data" );
+	for (r=0; r<font_data.length; r++) {
+		for (c=0; c<font_data[r].length; c++) {
+			mem[i] = font_data[r][c];
+			i+=1;
+		}
+	}
   // Initialize the "V" registers
   V = [];
   for (i=0; i<16; i++) {
@@ -860,7 +891,13 @@ function step1() {
     // console.log ( "LD Vx,DT" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF029) { // LD F, Vx
+    // It's not clear if the "Vx" should represent:
+    //   (a) the 4-bit number corresponding to the digit to be drawn
+    digit = (instruction&0x0F00)>>8;
+    //   (b) the 4-bit register number holding the number of the digit
+    // digit = V[(instruction&0x0F00)>>8];
     // console.log ( "LD Vx,DT" );
+    I = font_addr + (5 * digit); // There are 5 rows per digit
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF033) { // LD B, Vx
     // console.log ( "LD Vx,DT" );
@@ -1009,6 +1046,77 @@ TOP:    LD V0,01     ; Load x
 
         ; Screen should show 3 blocks since first was cleared
         ; Now that 3 blocks are drawn, use CLR to show failure
+
+
+        ; TEST the numeric sprites
+
+        LD V5,0A     ; Row to draw (Y)
+        LD V4,0C     ; Col to draw (X)
+        LD F,V0      ; Puts address of '0' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,V1      ; Puts address of '1' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,V2      ; Puts address of '2' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,V3      ; Puts address of '3' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,V4      ; Puts address of '4' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,V5      ; Puts address of '5' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,V6      ; Puts address of '6' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,V7      ; Puts address of '7' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+        LD V5,11     ; Row to draw (Y)
+        LD V4,0C     ; Col to draw (X)
+        LD F,V8      ; Puts address of '8' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,V9      ; Puts address of '9' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,VA      ; Puts address of 'A' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,VB      ; Puts address of 'B' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,VC      ; Puts address of 'C' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,VD      ; Puts address of 'D' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,VE      ; Puts address of 'E' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+				ADD V4,05    ; Move right by 5
+        LD F,VF      ; Puts address of 'F' in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
+
+
 
         ; TEST JP
         JP JPOK
