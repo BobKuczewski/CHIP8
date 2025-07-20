@@ -1049,83 +1049,11 @@ TOP:    LD V0,01     ; Load x
         ; Now that 3 blocks are drawn, use CLR to show failure
 
 
-        ; TEST the numeric sprites
-
-        ; Draw hard-coded (no loop)
-
-        LD VA,05     ; Amount to increment I (size of glyphs)
-        LD V5,0A     ; Row to draw (Y)
-        LD V4,0C     ; Col to draw (X)
-        LD F,V0      ; Puts address of '0' in I
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-        LD V5,11     ; Row to draw (Y)
-        LD V4,0C     ; Col to draw (X)
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-				ADD V4,05    ; Move right by 5
-        ADD I,VA     ; Move I to the next glyph
-        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-
-
-        ; Draw again (above and below) with 2 loops
+        ; TEST the 16 numeric sprites with 2 loops
 
         LD VA,05     ; Amount to increment I (size of glyphs)
         LD F,V0      ; Puts address of '0' in I
-        LD V5,03     ; Starting Row to draw (Y)
+        LD V5,0A     ; Starting Row to draw (Y)
         LD V4,0C     ; Starting Col to draw (X)
         LD VC,00     ; Loop counter
 
@@ -1136,7 +1064,8 @@ NLoop1: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
         SE  VC,08    ; Skip branch when counter == 8
         JP  NLoop1   ; Continue with next glyph
 
-        LD V5,18     ; Starting Row to draw (Y)
+
+        LD V5,11     ; Starting Row to draw (Y)
         LD V4,0C     ; Starting Col to draw (X)
         LD VC,00     ; Loop counter
 
