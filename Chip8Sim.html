@@ -79,7 +79,7 @@ SP = 0x0001; // Set stack pointer at 1 since it is incremented before use
 I = 0x0000;  // Index register
 N = 0;       // Number of instructions since reset
 CT = 1;      // Clock Time (time per clock tick
-ST = 1000;   // Steps per clock tick
+ST = 1;      // Steps per clock tick
 
 num_rows = 32;
 num_cols = 64;
@@ -211,6 +211,8 @@ function init_machine() {
     }
     screen.push(row)
   }
+  document.getElementById("ST").value = ST.toString();
+  document.getElementById("CT").value = CT.toString();
   update_display();
   draw_screen();
 }
@@ -228,7 +230,7 @@ function load_menus() {
 }
 
 function load_example() {
-  document.getElementById ( "source" ).value = document.getElementById("Draw XOR box").innerHTML;
+  document.getElementById ( "source" ).value = document.getElementById("Draw Square Figure 8").innerHTML;
 }
 
 function onload() {
@@ -744,6 +746,7 @@ function restore() {
 
 function load() {
   // Load from the machine code text area into mem
+  stop_running = true;
   bintxt = document.getElementById ( "machine" ).value;
   // Convert the text into lines of instructions
 	lines = get_machine_lines ( bintxt );
@@ -756,6 +759,7 @@ function load() {
 }
 
 function reset() {
+  stop_running = true;
   PC = 0x0200;
   SP = 0x0001;
   I  = 0x0000;
@@ -963,16 +967,37 @@ function step1() {
 	draw_screen();
 }
 
+var pause_time_ms = 100; // 100
+var running = false;
+var stop_running = false;
+
 function run1() {
-  step1();
+  stop_running = true;
+  if (!running) {
+    step1();
+  } else {
+	  stop_running = true;
+  }
 }
 
 function run() {
   // ST = parseInt ( document.getElementById("ST").value );
   // CT = parseInt ( document.getElementById("CT").value );
-	for (stepnum=0; stepnum<ST; stepnum++) {
-		step1();
+  if (stop_running == false) {
+		for (stepnum=0; stepnum<ST; stepnum++) {
+		  if (stop_running) {
+				running = false;
+			  update_rs_button();
+		    return ( false );
+		  }
+			step1();
+		}
+    setTimeout ( "run()", CT ); // pause_time_ms );
+  } else {
+	  running = false;
+	  update_rs_button();
 	}
+  return ( false );
 }
 
 function stop() {
@@ -998,11 +1023,54 @@ function on_doc_change() {
 	}
 }
 
-
 function on_example_change() {
 	let selector = document.getElementById("example_select");
 	let setting = selector[selector.selectedIndex].value;
   document.getElementById ( "source" ).value = document.getElementById(setting).innerHTML;
+}
+
+function update_rs_button() {
+  if (running) {
+	  document.getElementById('RunStop').innerHTML = "<u>Run</u>/Stop";
+	  document.getElementById('RunStop').setAttribute("style", "background-color: #FF9999;");
+  } else {
+	  document.getElementById('RunStop').innerHTML = "Run/<u>Stop</u>";
+	  document.getElementById('RunStop').setAttribute("style", "background-color: #99FF99;");
+  }
+}
+
+function run_stop_clicked() {
+  running = !running;
+  if (running) {
+	  stop_running = false;
+	  //document.getElementById('RunStop').innerHTML = "<u>Run</u>/Stop";
+	  //document.getElementById('RunStop').setAttribute("style", "background-color: #FF9999;");
+	  run();
+  } else {
+	  stop_running = true;
+	  //document.getElementById('RunStop').innerHTML = "Run/<u>Stop</u>";
+	  //document.getElementById('RunStop').setAttribute("style", "background-color: #99FF99;");
+  }
+  update_rs_button();
+}
+
+function step_clicked() {
+  stop_running = true;
+  if (!running) {
+    run1();
+  }
+  update_rs_button();
+}
+
+function reload_and_run() {
+  if (running) {
+	  run_stop_clicked();
+  }
+  reset();
+  assemble();
+  load();
+  reset();
+	run_stop_clicked();
 }
 
 </script>
@@ -1052,10 +1120,13 @@ function on_example_change() {
 		<td>
 		  &nbsp; &nbsp; &nbsp; &nbsp;
 			<input type="button" name="run1" value="Step" onclick="run1();"></input>
-			<input type="button" name="run"  value="Run"  onclick="run();"></input>
-			<input type="button" name="stop" value="Stop" onclick="stop();"></input>
+			<!-- <input type="button" name="run"  value="Run"  onclick="run();"></input>
+			<input type="button" name="stop" value="Stop" onclick="stop();"></input> -->
 			&nbsp; &nbsp;
-			<input type="button" name="stop" value="↻" onclick="assemble(); load(); reset(); run();""></input>
+			<input type="button" name="stop" value="↻" onclick="reload_and_run();" style="background-color: #AAAAFF;"></input>
+			&nbsp; &nbsp;
+			<button type="button" id="RunStop" onclick="run_stop_clicked();" style="background-color: #99FF99;">Run/<u>Stop</u></button>
+
 		</td>
 	</tr>
 </table>
@@ -1526,13 +1597,13 @@ LOOP:  ADD V0,VA    ; Increment x
        ADD V0,VA    ; Increment x
        CALL PIX     ; Call the PIX Subroutine
 
-       ADD V1,VA    ; Increment x
+       ADD V1,VA    ; Increment y
        CALL PIX     ; Call the PIX Subroutine
-       ADD V1,VA    ; Increment x
+       ADD V1,VA    ; Increment y
        CALL PIX     ; Call the PIX Subroutine
-       ADD V1,VA    ; Increment x
+       ADD V1,VA    ; Increment y
        CALL PIX     ; Call the PIX Subroutine
-       ADD V1,VA    ; Increment x
+       ADD V1,VA    ; Increment y
        CALL PIX     ; Call the PIX Subroutine
 
        SUB V0,VA    ; Decrement x
@@ -1560,8 +1631,89 @@ PIX:   LD I,PX      ; Load sprite address
        RET
 
 PX:    DATA 8000    ; Image data leftmost bit set
+</pre></td></tr>
 
 
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw Square Figure 8">
+;===========================;
+;  Draw sq fig 8 in CHIP-8  ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;===========================;
+
+TOP:   LD V0,1F     ; Load x at center of screen
+       LD V1,10     ; Load y at center of screen
+       LD VA,01     ; Load increment of 1
+       LD VD,0D     ; Set the size of the figure 8
+
+
+LOOP:
+       LD  VC,VD    ; Load the count
+L1:    CALL PIX     ; Call the PIX Subroutine
+       ADD V1,VA    ; Increment y
+       SUB VC,VA    ; Decrement count
+       SE  VC,00    ; Skip following when 0
+       JP  L1
+
+       LD  VC,VD    ; Load the count
+L2:    CALL PIX     ; Call the PIX Subroutine
+       ADD V0,VA    ; Increment x
+       SUB VC,VA    ; Decrement count
+       SE  VC,00    ; Skip following when 0
+       JP  L2
+
+       LD  VC,VD    ; Load the count
+L3:    CALL PIX     ; Call the PIX Subroutine
+       SUB V1,VA    ; Decrement y
+       SUB VC,VA    ; Decrement count
+       SE  VC,00    ; Skip following when 0
+       JP  L3
+
+       LD  VC,VD    ; Load the count
+L4:    CALL PIX     ; Call the PIX Subroutine
+       SUB V0,VA    ; Decrement x
+       SUB VC,VA    ; Decrement count
+       SE  VC,00    ; Skip following when 0
+       JP  L4
+
+       LD  VC,VD    ; Load the count
+L5:    CALL PIX     ; Call the PIX Subroutine
+       SUB V0,VA    ; Decrement x
+       SUB VC,VA    ; Decrement count
+       SE  VC,00    ; Skip following when 0
+       JP  L5
+
+       LD  VC,VD    ; Load the count
+L6:    CALL PIX     ; Call the PIX Subroutine
+       SUB V1,VA    ; Decrement y
+       SUB VC,VA    ; Decrement count
+       SE  VC,00    ; Skip following when 0
+       JP  L6
+
+       LD  VC,VD    ; Load the count
+L7:    CALL PIX     ; Call the PIX Subroutine
+       ADD V0,VA    ; Increment x
+       SUB VC,VA    ; Decrement count
+       SE  VC,00    ; Skip following when 0
+       JP  L7
+
+       LD  VC,VD    ; Load the count
+L8:    CALL PIX     ; Call the PIX Subroutine
+       ADD V1,VA    ; Increment y
+       SUB VC,VA    ; Decrement count
+       SE  VC,00    ; Skip following when 0
+       JP  L8
+
+
+       JP LOOP
+
+PIX:   LD I,PX      ; Load sprite address
+       DRW V0,V1,1  ; Draw at (V0,V1) 8 rows
+       RET
+
+PX:    DATA 8000    ; Image data leftmost bit set
 </pre></td></tr>
 
 
