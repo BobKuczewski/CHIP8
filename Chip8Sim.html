@@ -135,19 +135,21 @@ function draw_screen() {
 }
 
 function update_display() {
+  update_variables();
   // Show the Memory starting with mem_top (even addresses)
   base_addr = 2 * Math.floor(mem_top/2);
   for (i=0; i<16; i++) {
     i_text = i.toString(16).toUpperCase().trim();
     addr = base_addr + (2*i);
-    document.getElementById("A"+i_text).innerHTML = pad0 ( addr.toString(16).toUpperCase(), 4 );
     mem_val = (mem[addr] << 8) + mem[addr+1];
+    document.getElementById("A"+i_text).innerHTML = pad0 ( addr.toString(16).toUpperCase(), 4 );
     document.getElementById("M"+i_text).value = pad0 ( mem_val.toString(16).toUpperCase(), 4 );
   }
   // Show the register values
   for (i=0; i<16; i++) {
-    a = "V" + i_text;
-    document.getElementById(a).value = pad0 ( V[i].toString(16).toUpperCase(), 2 );
+    i_text = i.toString(16).toUpperCase().trim();
+    v = "V" + i_text;
+    document.getElementById(v).value = pad0 ( V[i].toString(16).toUpperCase(), 2 );
   }
   document.getElementById("PC").value = pad0 ( PC.toString(16).toUpperCase(), 4 );
   document.getElementById("SP").value = pad0 ( SP.toString(16).toUpperCase(), 4 );
@@ -961,14 +963,24 @@ function step1() {
 	draw_screen();
 }
 
+function run1() {
+  step1();
+}
+
 function run() {
-  ST = parseInt ( document.getElementById("ST").value );
+  // ST = parseInt ( document.getElementById("ST").value );
+  // CT = parseInt ( document.getElementById("CT").value );
 	for (stepnum=0; stepnum<ST; stepnum++) {
 		step1();
 	}
 }
 
 function stop() {
+}
+
+function update_variables() {
+  ST = parseInt ( document.getElementById("ST").value );
+  CT = parseInt ( document.getElementById("CT").value );
 }
 
 function on_doc_change() {
@@ -1039,7 +1051,7 @@ function on_example_change() {
 		</td>
 		<td>
 		  &nbsp; &nbsp; &nbsp; &nbsp;
-			<input type="button" name="step1" value="Step" onclick="step1();"></input>
+			<input type="button" name="run1" value="Step" onclick="run1();"></input>
 			<input type="button" name="run"  value="Run"  onclick="run();"></input>
 			<input type="button" name="stop" value="Stop" onclick="stop();"></input>
 			&nbsp; &nbsp;
@@ -1066,36 +1078,7 @@ function on_example_change() {
 				<center>
 				<textarea id="source" rows="27" cols="64"
 				   autocomplete="off" autocorrect="off"
-				   autocapitalize="off" spellcheck="false">
-;===========================;
-; Generate a maze in CHIP-8 ;
-;===========================;
-; Registers:                ;
-;   V0 used for x           ;
-;   V1 used for y           ;
-;   V2 used for random bit  ;
-;===========================;
-
-TOP: LD I,R3      ; Load sprite address
-     RND V2,01    ; Put random bit in V2
-     SE V2,01     ; Skip if V2=1 (random)
-     LD I,R1      ; Load a different sprite
-     DRW V0,V1,4  ; Draw at (V0,V1) 4 rows
-     ADD V0,04    ; Add 4 to x coord
-     SE V0,40     ; Skip if at end of V0
-     JP TOP       ; Go back to top
-     LD V0,00     ; At end so go back x=0
-     ADD V1,04    ; Add 4 to y
-     SE V1,20     ; Skip if end of y (done)
-     JP TOP       ; Go back to top
-END: JP END       ; Stay here ... forever
-
-R1:  DATA 8040    ; Image data
-R2:  DATA 2010    ; Image data
-R3:  DATA 2040    ; Image data
-R4:  DATA 8010    ; Image data
-</textarea>
-
+				   autocapitalize="off" spellcheck="false"></textarea>
 				</center>
 			</td>
 
