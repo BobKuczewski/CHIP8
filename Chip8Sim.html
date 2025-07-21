@@ -76,7 +76,11 @@ mem_top = 0x0200; // Address of memory shown at top of the memory list
 V = [];
 PC = 0x0200; // Program Counter typically starts at 0x0200
 SP = 0x0001; // Set stack pointer at 1 since it is incremented before use
-I = 0x0000;
+I = 0x0000;  // Index register
+N = 0;       // Number of instructions since reset
+CT = 1;      // Clock Time (time per clock tick
+ST = 1000;   // Steps per clock tick
+
 num_rows = 32;
 num_cols = 64;
 screen = [];
@@ -139,8 +143,9 @@ function update_display() {
     document.getElementById("A"+i_text).innerHTML = pad0 ( addr.toString(16).toUpperCase(), 4 );
     mem_val = (mem[addr] << 8) + mem[addr+1];
     document.getElementById("M"+i_text).value = pad0 ( mem_val.toString(16).toUpperCase(), 4 );
-
-    // Initialize the register values
+  }
+  // Show the register values
+  for (i=0; i<16; i++) {
     a = "V" + i_text;
     document.getElementById(a).value = pad0 ( V[i].toString(16).toUpperCase(), 2 );
   }
@@ -149,6 +154,9 @@ function update_display() {
   opcode = pad0(mem[PC].toString(16).toUpperCase(),2) + pad0(mem[PC+1].toString(16).toUpperCase(),2)
   document.getElementById("PCINST").value = disassemble_line( opcode.trim() );
   document.getElementById("[I]").value = pad0 ( I.toString(16).toUpperCase(), 4 );
+  document.getElementById("N").value = N.toString();
+  document.getElementById("ST").value = ST.toString();
+  document.getElementById("CT").value = CT.toString();
 }
 
 function init_machine() {
@@ -206,7 +214,7 @@ function init_machine() {
 }
 
 function load_menus() {
-  example_menu = document.getElementById("load_example");
+  example_menu = document.getElementById("example_select");
   ex = document.getElementsByClassName("exsrc");
   for (i=0; i<ex.length; i++) {
     opt = document.createElement ( "option" );
@@ -217,8 +225,13 @@ function load_menus() {
   }
 }
 
+function load_example() {
+  document.getElementById ( "source" ).value = document.getElementById("Draw XOR box").innerHTML;
+}
+
 function onload() {
   load_menus();
+  load_example();
   init_machine();
   clear_screen();
 }
@@ -744,6 +757,7 @@ function reset() {
   PC = 0x0200;
   SP = 0x0001;
   I  = 0x0000;
+  N = 0;
 	for (i=0; i<16; i++) {
 	  V[i] = 0;
 	}
@@ -883,9 +897,18 @@ function step1() {
     n = instruction & 0x000F;
     for (pixrow=0; pixrow<n; pixrow++) {
       for (c=0; c<8; c++) {
+			// Plain drawing (draw 1 in each location)
+			//if ( mem[I+pixrow] & (0x80 >> c) ) {
+			//  screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = 1;
+			//}
+			// XOR drawing (perform XOR of each pix with memory)
         if ( mem[I+pixrow] & (0x80 >> c) ) {
-			    screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = 1;
-			  }
+          bit = 1;
+        } else {
+          bit = 0;
+        }
+        pix = ( bit ^ screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] );
+		    screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = pix;
 			}
     }
 	  PC = PC + 2;
@@ -933,12 +956,14 @@ function step1() {
     // console.log ( "UNKNOWN INSTRUCTION: " + pad0(instruction.toString(16).toUpperCase(),4) );
 	  PC = PC + 2;
   }
+  N = N + 1;
 	update_display();
 	draw_screen();
 }
 
 function run() {
-	for (stepnum=0; stepnum<1000; stepnum++) {
+  ST = parseInt ( document.getElementById("ST").value );
+	for (stepnum=0; stepnum<ST; stepnum++) {
 		step1();
 	}
 }
@@ -963,13 +988,8 @@ function on_doc_change() {
 
 
 function on_example_change() {
-  // console.log ( "on_example_change called" );
-  // Save the current text (just in case)
-  // save();
-	let selector = document.getElementById("load_example");
+	let selector = document.getElementById("example_select");
 	let setting = selector[selector.selectedIndex].value;
-  //console.log ( "Setting = " + setting );
-  //console.log ( document.getElementById(setting).innerHTML );
   document.getElementById ( "source" ).value = document.getElementById(setting).innerHTML;
 }
 
@@ -1022,6 +1042,8 @@ function on_example_change() {
 			<input type="button" name="step1" value="Step" onclick="step1();"></input>
 			<input type="button" name="run"  value="Run"  onclick="run();"></input>
 			<input type="button" name="stop" value="Stop" onclick="stop();"></input>
+			&nbsp; &nbsp;
+			<input type="button" name="stop" value="↻" onclick="assemble(); load(); reset(); run();""></input>
 		</td>
 	</tr>
 </table>
@@ -1074,73 +1096,15 @@ R3:  DATA 2040    ; Image data
 R4:  DATA 8010    ; Image data
 </textarea>
 
-<!-- Original that should be the default:
-				<textarea id="source" rows="27" cols="50"
-				   autocomplete="off" autocorrect="off"
-				   autocapitalize="off" spellcheck="false">
-;===========================;
-; Generate a maze in CHIP-8 ;
-;===========================;
-; Registers:                ;
-;   V0 used for x           ;
-;   V1 used for y           ;
-;   V2 used for random bit  ;
-;===========================;
-
-TOP: LD I,R3      ; Load sprite address
-     RND V2,01    ; Put random bit in V2
-     SE V2,01     ; Skip if V2=1 (random)
-     LD I,R1      ; Load a different sprite
-     DRW V0,V1,4  ; Draw at (V0,V1) 4 rows
-     ADD V0,04    ; Add 4 to x coord
-     SE V0,40     ; Skip if at end of V0
-     JP TOP       ; Go back to top
-     LD V0,00     ; At end so go back x=0
-     ADD V1,04    ; Add 4 to y
-     SE V1,20     ; Skip if end of y (done)
-     JP TOP       ; Go back to top
-END: JP END       ; Stay here ... forever
-
-R1:  DATA 8040    ; Image data
-R2:  DATA 2010    ; Image data
-R3:  DATA 2040    ; Image data
-R4:  DATA 8010    ; Image data</textarea>
--->
-
 				</center>
 			</td>
 
 		  <td valign="top">
 				<center>
-				<!-- Generate hex from binary ch8 file with: od -v -tx1 -An filename -->
-
-				<!-- $ od -v -tx1 -An bin/chip8/games/Maze.ch8
-							 a2 1e c2 01 32 01 a2 1a d0 14 70 04 30 40 12 00
-							 60 00 71 04 31 20 12 00 12 18 80 40 20 10 20 40
-							 80 10 -->
 
 				<textarea id="machine" rows="27" cols="5"
 				   autocomplete="off" autocorrect="off"
 				   autocapitalize="off" spellcheck="false"></textarea>
-<!--
-A21E
-C201
-3201
-A21A
-D014
-7004
-3040
-1200
-6000
-7104
-3120
-1200
-1218
-8040
-2010
-2040
-8010
-</textarea> -->
 				</center>
 			</td>
 
@@ -1239,14 +1203,36 @@ D014
 							<tr>
 								<td>
 									<table class="reg">
-										<tr class="reg"><td class="reg">[ I ]</td><td class="reg"><input type="text" id="[I]" class="reg" name="[I]" size="4"></td></tr>
+										<tr class="reg"><td class="reg">SP</td><td class="reg"><input type="text" id="SP" class="reg" name="SP" size="4"></td></tr>
+									</table>
+								</td>
+								<td>
+									<table class="reg">
+										<tr class="reg"><td class="reg">&nbsp;N&nbsp;</td><td class="reg"><input type="text" id="N" class="reg" name="N" size="9" readonly></td></tr>
 									</table>
 								</td>
 							</tr>
 							<tr>
 								<td>
 									<table class="reg">
-										<tr class="reg"><td class="reg">SP</td><td class="reg"><input type="text" id="SP" class="reg" name="SP" size="4"></td></tr>
+										<tr class="reg"><td class="reg">[ I ]</td><td class="reg"><input type="text" id="[I]" class="reg" name="[I]" size="4"></td></tr>
+									</table>
+								</td>
+								<td>
+									<table class="reg">
+										<tr class="reg"><td class="reg">ST</td><td class="reg"><input type="text" id="ST" class="reg" name="ST" size="9"></td></tr>
+									</table>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<table class="reg">
+										<tr class="reg"><td class="reg">&nbsp;</td><td class="reg"></td></tr>
+									</table>
+								</td>
+								<td>
+									<table class="reg">
+										<tr class="reg"><td class="reg">CT</td><td class="reg"><input type="text" id="CT" class="reg" name="CT" size="9"></td></tr>
 									</table>
 								</td>
 							</tr>
@@ -1268,7 +1254,7 @@ D014
 
 
 <b>Examples:</b>
-<select id="load_example" onchange="on_example_change()">
+<select id="example_select" onchange="on_example_change()">
 <option value="none" selected>-- Select --</option>
 </select>
 <!-- <button type="button" onclick="on_example_change();">Load</button> -->
@@ -1297,47 +1283,80 @@ D014
 
 
 <div id="introduction" hidden>
-<center>
-<h3>Introduction</h3>
-</center>
+<center><h2>Introduction</h2></center>
 
 This Javascript/HTML program implements a version of the CHIP-8 programming environment.
-<br/><br/>
-CHIP-8 source code can be entered in the "Source Code" text area. It can be assembled into the
-"Machine Code" text area. From there it can be loaded into the simulator and run. The CHIP-8
+<br></br>
+CHIP-8 source code can be entered in the "<b>Source Code</b>" text area. It can be assembled into the
+"<b>Machine Code</b>" text area. From there it can be loaded into the simulator and run. The CHIP-8
 screen is 64 x 32 (or 40 x 20 in hex).
-<br/><br/>
-The "Assemble" button assembles the source code and produces machine code.
-<br/><br/>
-The "Save" button saves a copy of the source window internally (it may be lost if you leave the page).
-<br/><br/>
-The "Restore" button restores the internally saved copy of the source window.
-<br/><br/>
-The "Diassemble as" button will disassemble from the Machine Code window into the Source Code window
+<br></br>
+<center><h3>Top row buttons: Assembling, Loading, Running)</h3></center>
+
+The "<b>Assemble</b>" button assembles the source code and produces machine code.
+<br></br>
+The "<b>Save</b>" button saves a copy of the source window internally (it may be lost if you leave the page).
+<br></br>
+The "<b>Restore</b>" button restores the internally saved copy of the source window.
+<br></br>
+The "<b>Diassemble as</b>" button will disassemble from the Machine Code window into the Source Code window
 (over-writing any text already in the Source Code window). The format of the disassembly is governed
 by the selector which is one of the following:
 <ul>
-<li>Src: Generates only source - can be reassembled.</li>
-<li>L+S: Generates labels and source - can be reassembled.</li>
-<li>H+S: Generates hex and source - cannot be reassembled.</li>
-<li>LHS: Generates labels, hex, and source - cannot be reassembled.</li>
+<li><b>Src</b>: Generates only source - can be reassembled.</li>
+<li><b>L+S</b>: Generates labels and source - can be reassembled.</li>
+<li><b>H+S</b>: Generates hex and source - cannot be reassembled.</li>
+<li><b>LHS</b>: Generates labels, hex, and source - cannot be reassembled.</li>
 </ul>
 
-The "Load" button will load the hex values in the "Machine Code" window into the memory of the simulation.
+The "<b>Load</b>" button will load the hex values in the "Machine Code" window into the memory of the simulation.
 You will see the machine code in the memory area below the graphics window.
-<br/><br/>
+<br></br>
 
-The "Reset" button clears the graphics output and set all registers to their default state.
-<br/><br/>
+The "<b>Reset</b>" button clears the graphics output and set all registers to their default state.
+<br></br>
 
-The "Step" button will run a single CHIP-8 instruction and then stop.
-<br/><br/>
+The "<b>Step</b>" button will run a single CHIP-8 instruction and then stop.
+<br></br>
 
-The "Run" button will run 1000 CHIP-8 instructions and then stop.
-<br/><br/>
+The "<b>Run</b>" button will run 1000 CHIP-8 instructions and then stop.
+<br></br>
 
-The "Stop" button is not currently implemented.
-<br/><br/>
+The "<b>Stop</b>" button is not currently implemented.
+<br></br>
+
+Finally the "Assemble, Load, Run" button ("<b>↻</b>") does all three. It's most useful during rapid development.
+<br></br>
+
+<center><h3>Examples</h3></center>
+The "Examples" control allows selecting from a number of example programs.
+Selecting any of the examples from the selection menu will replace the
+current code with that example. BE SURE YOUR CODE IS SAVED FIRST!! Once
+an example is loaded, it can be easily run with the "Run" button.
+
+<center><h3>Documentation</h3></center>
+The "Documentation" control allows selecting from a number of topics.
+If the topic doesn't show for some reaon, try clicking the "Show" button.
+Among other things, the full CHIP-8 instruction set and all of the examples
+are available via the Documentation control.
+
+<center><h3>Limitations</h3></center>
+
+<ol>
+<li>Hex values should be entered with the proper number of digits
+(1 for a nibble, 2 for a byte, 3 for a CHIP-8 address, and 4 for a full address).
+Any other number of digits (too many or too few) will cause assembly problems.
+</li>
+<li>Several instructions haven't been implemented yet.
+</li>
+<li>There is no asynchronous (threaded) support yet.
+When you click the "Run" button, it will run 1000 instructions and ignore
+the user interface (freeze) until it's done.
+</li>
+<li>The "Stop" button isn't implemented yet.
+</li>
+<li>There is no current support for either input (keyboard instructions) or sound.
+</li>
 
 <hr/>
 
@@ -1357,7 +1376,7 @@ Code   Assembly           Description - All numbers are hexadecimal
        lbl:               &#x2705; A label - must not match any other string in the program!
 nnnn - DATA nnnn          &#x2705; Initialize a data word (all values in hex)
 
-0nnn - SYS addr           Jump to a machine code routine at nnn.
+0nnn - SYS addr           &#x274C; Jump to a machine code routine at nnn.
 00E0 - CLS                &#x2705; Clear the display.
 00EE - RET                &#x2705; Return from a subroutine.
 1nnn - JP addr            &#x2705; Jump to location nnn.
@@ -1381,17 +1400,17 @@ Annn - LD I, addr         &#x2705; Load I Immediate: Set I = nnn.
 Bnnn - JP V0, addr        &#x2705; Jump to V0 with offset nnn.
 Cxkk - RND Vx, byte       &#x2705; Rand: Set Vx to a random number (0 to 255) AND byte value.
 Dxyn - DRW Vx, Vy, n      &#x2705; Draw: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-Ex9E - SKP Vx             Skip if Key[Vx]: Skip next instruction if key with the value of Vx is pressed.
-ExA1 - SKNP Vx            Skip if !Key[Vx]: Skip next instruction if key with the value of Vx is not pressed.
-Fx07 - LD Vx, DT          Load Vx from Delay Timer: Set Vx = delay timer value.
-Fx0A - LD Vx, K           Load Vx from next Key: Wait for a key press, store the value of the key in Vx.
-Fx15 - LD DT, Vx          Load Delay Timer from Vx: Set delay timer = Vx.
-Fx18 - LD ST, Vx          Load Sound Timer from Vx: Set sound timer = Vx.
+Ex9E - SKP Vx             &#x274C; Skip if Key[Vx]: Skip next instruction if key with the value of Vx is pressed.
+ExA1 - SKNP Vx            &#x274C; Skip if !Key[Vx]: Skip next instruction if key with the value of Vx is not pressed.
+Fx07 - LD Vx, DT          &#x274C; Load Vx from Delay Timer: Set Vx = delay timer value.
+Fx0A - LD Vx, K           &#x274C; Load Vx from next Key: Wait for a key press, store the value of the key in Vx.
+Fx15 - LD DT, Vx          &#x274C; Load Delay Timer from Vx: Set delay timer = Vx.
+Fx18 - LD ST, Vx          &#x274C; Load Sound Timer from Vx: Set sound timer = Vx.
 Fx1E - ADD I, Vx          &#x2705; Add Vx to I: Set I = I + Vx.
 Fx29 - LD F, Vx           &#x2705; Load I from Sprite location: Set I = location of sprite for digit Vx.
-Fx33 - LD B, Vx           Load BCD from X into Memory[I]: Store BCD representation of Vx in memory locations I, I+1, and I+2.
-Fx55 - LD [I], Vx         Save Registers: Store registers V0 through Vx in memory starting at location I.
-Fx65 - LD Vx, [I]         Restore Register: Read registers V0 through Vx from memory starting at location I.
+Fx33 - LD B, Vx           &#x274C; Load BCD from X into Memory[I]: Store BCD representation of Vx in memory locations I, I+1, and I+2.
+Fx55 - LD [I], Vx         &#x274C; Save Registers: Store registers V0 through Vx in memory starting at location I.
+Fx65 - LD Vx, [I]         &#x274C; Restore Register: Read registers V0 through Vx from memory starting at location I.
 </pre>
 </tt>
 </td></tr></table>
@@ -1416,7 +1435,7 @@ $ od -v -tx1 -An filename<br/>
 For example:<br/>
 <br/>
 <tt>
-$ od -v -tx1 -An bin/chip8/games/Maze.ch8<br/>
+$ od -v -tx1 -An Maze.ch8<br/>
 a2 1e c2 01 32 01 a2 1a d0 14 70 04 30 40 12 00<br/>
 60 00 71 04 31 20 12 00 12 18 80 40 20 10 20 40<br/>
 80 10
@@ -1499,6 +1518,69 @@ BX:  DATA FF81    ; Image data FF is top, 81 is sides
      DATA 8181    ; Image data 81 is sides
      DATA 81FF    ; Image data 81 is sides, FF is bottom
 </pre></td></tr>
+
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw XOR box">
+;===========================;
+;  Draw XOR box in CHIP-8   ;
+;===========================;
+; Registers:                ;
+;   V0 used for x           ;
+;   V1 used for y           ;
+;===========================;
+
+TOP:   LD V0,1E     ; Load x
+       LD V1,0E     ; Load y
+       LD VA,01     ; Load increment of 1
+       CALL PIX     ; Call the PIX Subroutine
+
+LOOP:  ADD V0,VA    ; Increment x
+       CALL PIX     ; Call the PIX Subroutine
+       ADD V0,VA    ; Increment x
+       CALL PIX     ; Call the PIX Subroutine
+       ADD V0,VA    ; Increment x
+       CALL PIX     ; Call the PIX Subroutine
+       ADD V0,VA    ; Increment x
+       CALL PIX     ; Call the PIX Subroutine
+
+       ADD V1,VA    ; Increment x
+       CALL PIX     ; Call the PIX Subroutine
+       ADD V1,VA    ; Increment x
+       CALL PIX     ; Call the PIX Subroutine
+       ADD V1,VA    ; Increment x
+       CALL PIX     ; Call the PIX Subroutine
+       ADD V1,VA    ; Increment x
+       CALL PIX     ; Call the PIX Subroutine
+
+       SUB V0,VA    ; Decrement x
+       CALL PIX     ; Call the PIX Subroutine
+       SUB V0,VA    ; Decrement x
+       CALL PIX     ; Call the PIX Subroutine
+       SUB V0,VA    ; Decrement x
+       CALL PIX     ; Call the PIX Subroutine
+       SUB V0,VA    ; Decrement x
+       CALL PIX     ; Call the PIX Subroutine
+
+       SUB V1,VA    ; Decrement y
+       CALL PIX     ; Call the PIX Subroutine
+       SUB V1,VA    ; Decrement y
+       CALL PIX     ; Call the PIX Subroutine
+       SUB V1,VA    ; Decrement y
+       CALL PIX     ; Call the PIX Subroutine
+       SUB V1,VA    ; Decrement y
+       CALL PIX     ; Call the PIX Subroutine
+
+       JP LOOP
+
+PIX:   LD I,PX      ; Load sprite address
+       DRW V0,V1,1  ; Draw at (V0,V1) 8 rows
+       RET
+
+PX:    DATA 8000    ; Image data leftmost bit set
+
+
+</pre></td></tr>
+
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw boxes in-line">
 ;===========================;
@@ -1909,7 +1991,255 @@ BX:     DATA FF81    ; Image data FF is top, 81 is sides
         DATA 81FF    ; Image data 81 is sides, FF is bottom
 </pre></td></tr>
 
-
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Tetris">
+200: LD I,2B4
+202: CALL 3E6
+204: CALL 2B6
+206: ADD V0,01
+208: DRW V0,V1,1
+20A: SE V0,25
+20C: JP 206
+20E: ADD V1,FF
+210: DRW V0,V1,1
+212: LD V0,1A
+214: DRW V0,V1,1
+216: LD V0,25
+218: SE V1,00
+21A: JP 20E
+21C: RND V4,70
+21E: SNE V4,70
+220: JP 21C
+222: RND V3,03
+224: LD V0,1E
+226: LD V1,03
+228: CALL 25C
+22A: LD DT,V5
+22C: DRW V0,V1,4
+22E: SE VF,01
+230: JP 23C
+232: DRW V0,V1,4
+234: ADD V1,FF
+236: DRW V0,V1,4
+238: CALL 340
+23A: JP 21C
+23C: SKNP V7
+23E: CALL 272
+240: SKNP V8
+242: CALL 284
+244: SKNP V9
+246: CALL 296
+248: SKP V2
+24A: JP 250
+24C: LD V6,00
+24E: LD DT,V6
+250: LD V6,DT
+252: SE V6,00
+254: JP 23C
+256: DRW V0,V1,4
+258: ADD V1,01
+25A: JP 22A
+25C: LD I,2C4
+25E: ADD I,V4
+260: LD V6,00
+262: SNE V3,01
+264: LD V6,04
+266: SNE V3,02
+268: LD V6,08
+26A: SNE V3,03
+26C: LD V6,0C
+26E: ADD I,V6
+270: RET
+272: DRW V0,V1,4
+274: ADD V0,FF
+276: CALL 334
+278: SE VF,01
+27A: RET
+27C: DRW V0,V1,4
+27E: ADD V0,01
+280: CALL 334
+282: RET
+284: DRW V0,V1,4
+286: ADD V0,01
+288: CALL 334
+28A: SE VF,01
+28C: RET
+28E: DRW V0,V1,4
+290: ADD V0,FF
+292: CALL 334
+294: RET
+296: DRW V0,V1,4
+298: ADD V3,01
+29A: SNE V3,04
+29C: LD V3,00
+29E: CALL 25C
+2A0: CALL 334
+2A2: SE VF,01
+2A4: RET
+2A6: DRW V0,V1,4
+2A8: ADD V3,FF
+2AA: SNE V3,FF
+2AC: LD V3,03
+2AE: CALL 25C
+2B0: CALL 334
+2B2: RET
+2B4: LD V0,V0
+2B6: LD V7,05
+2B8: LD V8,06
+2BA: LD V9,04
+2BC: LD V1,1F
+2BE: LD V5,10
+2C0: LD V2,07
+2C2: RET
+2C4: SNE V0,E0
+2C6: SYS 000
+2C8: SNE V0,C0
+2CA: SNE V0,00
+2CC: CLS
+2CE: SNE V0,00
+2D0: SNE V0,60
+2D2: SNE V0,00
+2D4: SNE V0,40
+2D6: LD V0,00
+2D8: CALL 0E0
+2DA: SYS 000
+2DC: RND V0,40
+2DE: SNE V0,00
+2E0: CLS
+2E2: LD V0,V0
+2E4: SNE V0,40
+2E6: RND V0,00
+2E8: CLS
+2EA: CALL 000
+2EC: LD V0,40
+2EE: SNE V0,00
+2F0: LD V0,VE
+2F2: SYS 000
+2F4: SNE V0,C0
+2F6: LD V0,V0
+2F8: RND V0,60
+2FA: SYS 000
+2FC: SNE V0,C0
+2FE: LD V0,V0
+300: RND V0,60
+302: SYS 000
+304: LD V0,VC
+306: SNE V0,00
+308: SYS 060
+30A: RND V0,00
+30C: LD V0,VC
+30E: SNE V0,00
+310: SYS 060
+312: RND V0,00
+314: RND V0,C0
+316: SYS 000
+318: RND V0,C0
+31A: SYS 000
+31C: RND V0,C0
+31E: SYS 000
+320: RND V0,C0
+322: SYS 000
+324: SNE V0,40
+326: SNE V0,40
+328: SYS 0F0
+32A: SYS 000
+32C: SNE V0,40
+32E: SNE V0,40
+330: SYS 0F0
+332: SYS 000
+334: DRW V0,V1,4
+336: LD V6,35
+338: ADD V6,FF
+33A: SE V6,00
+33C: JP 338
+33E: RET
+340: LD I,2B4
+342: LD VC,V1
+344: SE VC,1E
+346: ADD VC,01
+348: SE VC,1E
+34A: ADD VC,01
+34C: SE VC,1E
+34E: ADD VC,01
+350: CALL 35E
+352: SNE VB,0A
+354: CALL 372
+356: SNE V1,VC
+358: RET
+35A: ADD V1,01
+35C: JP 350
+35E: LD V0,1B
+360: LD VB,00
+362: DRW V0,V1,1
+364: SE VF,00
+366: ADD VB,01
+368: DRW V0,V1,1
+36A: ADD V0,01
+36C: SE V0,25
+36E: JP 362
+370: RET
+372: LD V0,1B
+374: DRW V0,V1,1
+376: ADD V0,01
+378: SE V0,25
+37A: JP 374
+37C: LD VE,V1
+37E: LD VD,VE
+380: ADD VE,FF
+382: LD V0,1B
+384: LD VB,00
+386: DRW V0,VE,1
+388: SE VF,00
+38A: JP 390
+38C: DRW V0,VE,1
+38E: JP 394
+390: DRW V0,VD,1
+392: ADD VB,01
+394: ADD V0,01
+396: SE V0,25
+398: JP 386
+39A: SNE VB,00
+39C: JP 3A6
+39E: ADD VD,FF
+3A0: ADD VE,FF
+3A2: SE VD,01
+3A4: JP 382
+3A6: CALL 3C0
+3A8: SE VF,01
+3AA: CALL 3C0
+3AC: ADD VA,01
+3AE: CALL 3C0
+3B0: LD V0,VA
+3B2: LD VD,07
+3B4: AND V0,VD
+3B6: SNE V0,04
+3B8: ADD V5,FE
+3BA: SNE V5,02
+3BC: LD V5,04
+3BE: RET
+3C0: LD I,700
+3C2: LD [I],V2
+3C4: LD I,804
+3C6: LD B,VA
+3C8: LD V2,[I]
+3CA: LD F,V0
+3CC: LD VD,32
+3CE: LD VE,00
+3D0: DRW VD,VE,5
+3D2: ADD VD,05
+3D4: LD F,V1
+3D6: DRW VD,VE,5
+3D8: ADD VD,05
+3DA: LD F,V2
+3DC: DRW VD,VE,5
+3DE: LD I,700
+3E0: LD V2,[I]
+3E2: LD I,2B4
+3E4: RET
+3E6: LD VA,00
+3E8: LD V0,19
+3EA: RET
+3EC: SE V7,23
+</pre></td></tr>
 
 </table>
 </td></tr>
