@@ -1008,6 +1008,10 @@ function update_variables() {
   CT = parseInt ( document.getElementById("CT").value );
 }
 
+function key_press ( k ) {
+  console.log ( "Key " + k + " pressed" );
+}
+
 function on_doc_change() {
   // console.log ( "on_doc_change called" );
 	let selector = document.getElementById("show_help");
@@ -1262,7 +1266,7 @@ function reload_and_run() {
 								</td>
 								<td>
 									<table class="reg">
-										<tr class="reg"><td class="reg">&nbsp;N&nbsp;</td><td class="reg"><input type="text" id="N" class="reg" name="N" size="9" readonly></td></tr>
+										<tr class="reg"><td class="reg">ST</td><td class="reg"><input type="text" id="ST" class="reg" name="ST" size="9"></td></tr>
 									</table>
 								</td>
 							</tr>
@@ -1274,23 +1278,44 @@ function reload_and_run() {
 								</td>
 								<td>
 									<table class="reg">
-										<tr class="reg"><td class="reg">ST</td><td class="reg"><input type="text" id="ST" class="reg" name="ST" size="9"></td></tr>
+										<tr class="reg"><td class="reg">CT</td><td class="reg"><input type="text" id="CT" class="reg" name="CT" size="9"></td></tr>
 									</table>
 								</td>
 							</tr>
 							<tr>
 								<td>
 									<table class="reg">
-										<tr class="reg"><td class="reg">&nbsp;</td><td class="reg"></td></tr>
+										<tr class="reg"><td class="reg">??</td><td class="reg">????</td></tr>
 									</table>
 								</td>
 								<td>
 									<table class="reg">
-										<tr class="reg"><td class="reg">CT</td><td class="reg"><input type="text" id="CT" class="reg" name="CT" size="9"></td></tr>
+										<tr class="reg"><td class="reg">&nbsp;N&nbsp;</td><td class="reg"><input type="text" id="N" class="reg" name="N" size="9" readonly></td></tr>
 									</table>
 								</td>
 							</tr>
 						</table>
+						<center>
+						<table>
+						  <tr><td>&nbsp;</td></tr>
+						  <tr><td><input type="button" value="0" onclick="key_press('0');"></td>
+									 <td><input type="button" value="1" onclick="key_press('1');"></td>
+										<td><input type="button" value="2" onclick="key_press('2');"></td>
+										 <td><input type="button" value="3" onclick="key_press('3');"></td> </tr>
+						  <tr><td><input type="button" value="4" onclick="key_press('4');"></td>
+									 <td><input type="button" value="5" onclick="key_press('5');"></td>
+										<td><input type="button" value="6" onclick="key_press('6');"></td>
+										 <td><input type="button" value="7" onclick="key_press('7');"></td> </tr>
+						  <tr><td><input type="button" value="8" onclick="key_press('8');"></td>
+									 <td><input type="button" value="9" onclick="key_press('9');"></td>
+										<td><input type="button" value="A" onclick="key_press('A');"></td>
+										 <td><input type="button" value="B" onclick="key_press('B');"></td> </tr>
+						  <tr><td><input type="button" value="C" onclick="key_press('C');"></td>
+									 <td><input type="button" value="D" onclick="key_press('D');"></td>
+										<td><input type="button" value="E" onclick="key_press('E');"></td>
+										 <td><input type="button" value="F" onclick="key_press('F');"></td> </tr>
+						</table>
+						</center>
 					</td>
 					</tr>
 				</table> <!-- End of Virtual Machine Controls -->
@@ -1312,7 +1337,7 @@ function reload_and_run() {
 <option value="none" selected>-- Select --</option>
 </select>
 <!-- <button type="button" onclick="on_example_change();">Load</button> -->
-<input type="button" name="run"  value="Run"  onclick="assemble(); load(); reset(); run();"></input>
+<input type="button" name="run"  value="Run"  onclick="reload_and_run();"></input>
 
  &nbsp; &nbsp; &nbsp; <b>Documentation:</b>
 <select id="show_help" onchange="on_doc_change()">
@@ -1373,13 +1398,10 @@ The "<b>Reset</b>" button clears the graphics output and set all registers to th
 The "<b>Step</b>" button will run a single CHIP-8 instruction and then stop.
 <br></br>
 
-The "<b>Run</b>" button will run 1000 CHIP-8 instructions and then stop.
+The reload button ("<b>↻</b>") button will assemble, load, and reset.
 <br></br>
 
-The "<b>Stop</b>" button is not currently implemented.
-<br></br>
-
-Finally the "Assemble, Load, Run" button ("<b>↻</b>") does all three. It's most useful during rapid development.
+Finally the "<b>Run/Stop</b>" will toggle the clock between running and stopped.
 <br></br>
 
 <center><h3>Examples</h3></center>
@@ -1395,19 +1417,20 @@ Among other things, the full CHIP-8 instruction set and all of the examples
 are available via the Documentation control.
 
 <center><h3>Limitations</h3></center>
-
 <ol>
+<li>The assembler is very quirky. It uses simple string matching and can often
+make mistakes. These will typically show up as extra or missing characters in
+the assembled output (hex). Scroll up and down the hex to look for lines that
+don't have exactly 4 hex characters per line. Try not to use symbol names that
+are subsets of other symbol names. The symbols "loopA" and "loop" might confuse
+the assembler when it does string search and replace operations. But using
+"loopA" and "loopB" are OK since neither is a subset of the other.
+</li>
 <li>Hex values should be entered with the proper number of digits
 (1 for a nibble, 2 for a byte, 3 for a CHIP-8 address, and 4 for a full address).
 Any other number of digits (too many or too few) will cause assembly problems.
 </li>
 <li>Several instructions haven't been implemented yet.
-</li>
-<li>There is no asynchronous (threaded) support yet.
-When you click the "Run" button, it will run 1000 instructions and ignore
-the user interface (freeze) until it's done.
-</li>
-<li>The "Stop" button isn't implemented yet.
 </li>
 <li>There is no current support for either input (keyboard instructions) or sound.
 </li>
@@ -1796,21 +1819,27 @@ TOP: LD I,HZ      ; Load sprite address
      LD V0,04     ; Load x
      LD V1,04     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+
      LD V0,0C     ; Load x
      LD V1,04     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+
      LD V0,14     ; Load x
      LD V1,04     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+
      LD V0,1C     ; Load x
      LD V1,04     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+
      LD V0,24     ; Load x
      LD V1,04     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+
      LD V0,2C     ; Load x
      LD V1,04     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
+
      LD V0,34     ; Load x
      LD V1,04     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
@@ -1818,51 +1847,60 @@ TOP: LD I,HZ      ; Load sprite address
      LD I,VT      ; Load sprite address
 
      LD V0,3B     ; Load x
-     LD V1,04     ; Load y
+     LD V1,05     ; Load y
      DRW V0,V1,8  ; Draw at (V0,V1) 1 row
+
      LD V0,3B     ; Load x
-     LD V1,0C     ; Load y
+     LD V1,0D     ; Load y
      DRW V0,V1,8  ; Draw at (V0,V1) 1 row
+
      LD V0,3B     ; Load x
-     LD V1,14     ; Load y
-     DRW V0,V1,8  ; Draw at (V0,V1) 1 row
+     LD V1,15     ; Load y
+     DRW V0,V1,7  ; Draw at (V0,V1) 1 row
 
      LD I,HZ      ; Load sprite address
 
-     LD V0,34     ; Load x
+     LD V0,33     ; Load x
      LD V1,1B     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
-     LD V0,2C     ; Load x
+
+     LD V0,2B     ; Load x
      LD V1,1B     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
-     LD V0,24     ; Load x
+
+     LD V0,23     ; Load x
      LD V1,1B     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
-     LD V0,1C     ; Load x
+
+     LD V0,1B     ; Load x
      LD V1,1B     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
-     LD V0,14     ; Load x
+
+     LD V0,13     ; Load x
      LD V1,1B     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
-     LD V0,0C     ; Load x
+
+     LD V0,0B     ; Load x
      LD V1,1B     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
-     LD V0,04     ; Load x
+
+     LD V0,03     ; Load x
      LD V1,1B     ; Load y
      DRW V0,V1,1  ; Draw at (V0,V1) 1 row
 
      LD I,VT      ; Load sprite address
 
-     LD V0,04     ; Load x
+     LD V0,03     ; Load x
      LD V1,13     ; Load y
      DRW V0,V1,8  ; Draw at (V0,V1) 1 row
-     LD V0,04     ; Load x
+
+     LD V0,03     ; Load x
      LD V1,0B     ; Load y
      DRW V0,V1,8  ; Draw at (V0,V1) 1 row
-     LD V0,04     ; Load x
-     LD V1,04     ; Load y
-     DRW V0,V1,8  ; Draw at (V0,V1) 1 row
 
+     LD V0,03     ; Load x
+     LD V1,04     ; Load y
+     DRW V0,V1,7  ; Draw at (V0,V1) 1 row
 
 END: JP END       ; Stay here ... forever
 
