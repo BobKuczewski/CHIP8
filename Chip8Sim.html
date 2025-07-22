@@ -109,6 +109,18 @@ function hex (val) {
 	return ( val.toString(16).toUpperCase() );
 }
 
+function hex2 (val) {
+	return ( pad0 ( val.toString(16).toUpperCase(), 2 ) );
+}
+
+function hex3 (val) {
+	return ( pad0 ( val.toString(16).toUpperCase(), 3 ) );
+}
+
+function hex4 (val) {
+	return ( pad0 ( val.toString(16).toUpperCase(), 4 ) );
+}
+
 function clear_screen() {
   // Clear the display memory
   for (r=0; r<num_rows; r++) {
@@ -142,20 +154,20 @@ function update_display() {
     i_text = i.toString(16).toUpperCase().trim();
     addr = base_addr + (2*i);
     mem_val = (mem[addr] << 8) + mem[addr+1];
-    document.getElementById("A"+i_text).innerHTML = pad0 ( addr.toString(16).toUpperCase(), 4 );
-    document.getElementById("M"+i_text).value = pad0 ( mem_val.toString(16).toUpperCase(), 4 );
+    document.getElementById("A"+i_text).innerHTML = hex4 ( addr );
+    document.getElementById("M"+i_text).value = hex4 ( mem_val );
   }
   // Show the register values
   for (i=0; i<16; i++) {
     i_text = i.toString(16).toUpperCase().trim();
     v = "V" + i_text;
-    document.getElementById(v).value = pad0 ( V[i].toString(16).toUpperCase(), 2 );
+    document.getElementById(v).value = hex2 ( V[i] );
   }
-  document.getElementById("PC").value = pad0 ( PC.toString(16).toUpperCase(), 4 );
-  document.getElementById("SP").value = pad0 ( SP.toString(16).toUpperCase(), 4 );
-  opcode = pad0(mem[PC].toString(16).toUpperCase(),2) + pad0(mem[PC+1].toString(16).toUpperCase(),2)
+  document.getElementById("PC").value = hex4 ( PC );
+  document.getElementById("SP").value = hex4 ( SP );
+  opcode = hex2(mem[PC]) + hex2(mem[PC+1])
   document.getElementById("PCINST").value = disassemble_line( opcode.trim() );
-  document.getElementById("[I]").value = pad0 ( I.toString(16).toUpperCase(), 4 );
+  document.getElementById("[I]").value = hex4 ( I );
   document.getElementById("N").value = N.toString();
   document.getElementById("ST").value = ST.toString();
   document.getElementById("CT").value = CT.toString();
@@ -779,7 +791,7 @@ function reset() {
 function step1() {
   // Could not use the name "step" for some reason?
   instruction = (mem[PC] << 8) + mem[PC+1];
-  // console.log ( "Execute " + pad0(instruction.toString(16).toUpperCase(),4) );
+  // console.log ( "Execute " + hex4(instruction) );
   if (instruction == 0x00E0) { // CLS
     // console.log ( "CLS" );
     clear_screen();
@@ -793,7 +805,7 @@ function step1() {
     SP = SP - 2;
   } else if ( (instruction & 0xF000) == 0x0000) {  // SYS NNN
     // console.log ( "SYS" );
-    window.alert ( "The SYS instruction is at " + hex(PC) + " is not implemented" );
+    window.alert ( "The SYS instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x1000) {  // JP NNN
     // console.log ( "JP" );
@@ -860,22 +872,42 @@ function step1() {
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8004) { // ADD Vx,Vy
     // console.log ( "ADD Reg" );
-    V[(instruction&0x0F00)>>8] = V[(instruction&0x0F00)>>8] + V[(instruction&0x00F0)>>4];
+    result = V[(instruction&0x0F00)>>8] + V[(instruction&0x00F0)>>4];
+    if (result > 0xFF) {
+      V[0xF] = 1;
+    } else {
+      V[0xF] = 0;
+    }
+    V[(instruction&0x0F00)>>8] = result & 0xFF;
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8005) { // SUB Vx,Vy: Vx = Vx - Vy
     // console.log ( "SUB Reg" );
-    V[(instruction&0x0F00)>>8] = V[(instruction&0x0F00)>>8] - V[(instruction&0x00F0)>>4];
+    result = V[(instruction&0x0F00)>>8] - V[(instruction&0x00F0)>>4];
+    if (result < 0) {
+      V[0xF] = 0;
+    } else {
+      V[0xF] = 1;
+    }
+    V[(instruction&0x0F00)>>8] = result & 0xFF;
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8006) { // SHR Vx,Vy: Vx = Vy >> 1
     // console.log ( "SHR" );
+    V[0xF] = V[(instruction&0x00F0)>>4] & 0x01;
     V[(instruction&0x0F00)>>8] = V[(instruction&0x00F0)>>4] >> 1;
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8007) { // SUBN Vx,Vy: Vx = Vy - Vx
     // console.log ( "SUBN" );
-    V[(instruction&0x0F00)>>8] = V[(instruction&0x00F0)>>4] - V[(instruction&0x0F00)>>8];
+    result = V[(instruction&0x00F0)>>4] - V[(instruction&0x0F00)>>8];
+    if (result < 0) {
+      V[0xF] = 0;
+    } else {
+      V[0xF] = 1;
+    }
+    V[(instruction&0x0F00)>>8] = result & 0xFF;
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x800E) { // SHL Vx,Vy
     // console.log ( "SHL" );
+    V[0xF] = (V[(instruction&0x00F0)>>4] >> 7) & 0x01;
     V[(instruction&0x0F00)>>8] = (V[(instruction&0x00F0)>>4] << 1) & 0xff;
 	  PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x9000) { // SNE Vx,Vy
@@ -918,48 +950,58 @@ function step1() {
 			}
     }
 	  PC = PC + 2;
-  } else if ( (instruction & 0xF0FF) == 0xE09E) { // SKP Vx (Skip Key Vx is Pressed
+  } else if ( (instruction & 0xF0FF) == 0xE09E) { // SKP Vx (Skip Key Vx is Pressed)
     // console.log ( "SKP Vx" );
+    window.alert ( "The SKP Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
 	  PC = PC + 2;
-  } else if ( (instruction & 0xF000) == 0xE0A1) { // SKNP Vx (Skip Key Vx is Not Pressed
+  } else if ( (instruction & 0xF000) == 0xE0A1) { // SKNP Vx (Skip Key Vx is Not Pressed)
     // console.log ( "SKNP Vx" );
+    window.alert ( "The SKNP Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF007) { // LD Vx, DT
     // console.log ( "LD Vx,DT" );
+    window.alert ( "The LD Vx,DT instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF00A) { // LD Vx, K
-    // console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,K" );
+    window.alert ( "The LD Vx,K instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF015) { // LD DT, Vx
-    // console.log ( "LD Vx,DT" );
+    // console.log ( "LD DT,Vx" );
+    window.alert ( "The LD DT,Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF018) { // LD ST, Vx
-    // console.log ( "LD Vx,DT" );
+    // console.log ( "LD ST,Vx" );
+    window.alert ( "The LD ST,Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF01E) { // ADD I, Vx
-    // console.log ( "LD Vx,DT" );
+    // console.log ( "ADD I, Vx" );
     I = I + V[(instruction&0x0F00)>>8];
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF029) { // LD F, Vx
+    // console.log ( "LD F,Vx" );
     // It's not clear if the "Vx" should represent:
     //   (a) the 4-bit number corresponding to the digit to be drawn
     digit = (instruction&0x0F00)>>8;
     //   (b) the 4-bit register number holding the number of the digit
     // digit = V[(instruction&0x0F00)>>8];
-    // console.log ( "LD Vx,DT" );
     I = font_addr + (5 * digit); // There are 5 rows per digit
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF033) { // LD B, Vx
-    // console.log ( "LD Vx,DT" );
+    // console.log ( "LD B,Vx" );
+    window.alert ( "The LD B,Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF055) { // LD [I], Vx
-    // console.log ( "LD Vx,DT" );
+    // console.log ( "LD [I],Vx" );
+    window.alert ( "The LD [I],Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
 	  PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF065) { // LD Vx, [I]
-    // console.log ( "LD Vx,DT" );
+    // console.log ( "LD Vx,[I]" );
+    window.alert ( "The LD Vx,[I] instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
 	  PC = PC + 2;
   } else {
-    // console.log ( "UNKNOWN INSTRUCTION: " + pad0(instruction.toString(16).toUpperCase(),4) );
+    // console.log ( "UNKNOWN INSTRUCTION: " + hex4(instruction) );
+    window.alert ( "The SYS instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
 	  PC = PC + 2;
   }
   N = N + 1;
@@ -1370,7 +1412,7 @@ CHIP-8 source code can be entered in the "<b>Source Code</b>" text area. It can 
 "<b>Machine Code</b>" text area. From there it can be loaded into the simulator and run. The CHIP-8
 screen is 64 x 32 (or 40 x 20 in hex).
 <br></br>
-<center><h3>Top row buttons: Assembling, Loading, Running)</h3></center>
+<center><h3>Top row buttons: Assembling, Loading, Running</h3></center>
 
 The "<b>Assemble</b>" button assembles the source code and produces machine code.
 <br></br>
