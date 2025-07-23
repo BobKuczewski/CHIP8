@@ -55,17 +55,17 @@ input.regleft {
 }
 table.ex, th.ex, tr.ex, td.ex {
   border: 2px solid black;
-	font-family: monospace;
-	font-weight: bold;
-	font-size: 100%;
-	padding-top: 3px;
-	padding-left: 5px;
-	padding-right: 5px;
-	padding-bottom: 1px;
+  font-family: monospace;
+  font-weight: bold;
+  font-size: 100%;
+  padding-top: 3px;
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-bottom: 1px;
   border-collapse: collapse;
 }
 th.ex {
-	font-size: 120%;
+  font-size: 120%;
 }
 </style>
 
@@ -78,8 +78,10 @@ PC = 0x0200; // Program Counter typically starts at 0x0200
 SP = 0x0001; // Set stack pointer at 1 since it is incremented before use
 I = 0x0000;  // Index register
 N = 0;       // Number of instructions since reset
+T = 0;       // Timer Register
 CT = 1;      // Clock Time (time per clock tick)
 ST = 1;      // Steps per clock tick
+DT = 11;     // Delay Time (time per delay count)
 
 num_rows = 32;
 num_cols = 64;
@@ -89,12 +91,12 @@ bg_color = "#000044";
 font_addr = 0x0FA0;  // This could be anywhere but stack or program memory
 
 function replaceAll ( s, t, r ) {
-	new_s = (s + " ").trim();
-	do {
-		last_s = (new_s + " ").trim();
-	  new_s = last_s.replace(t,r);
-	} while ( ! (new_s === last_s) );
-	return ( new_s );
+  new_s = (s + " ").trim();
+  do {
+    last_s = (new_s + " ").trim();
+    new_s = last_s.replace(t,r);
+  } while ( ! (new_s === last_s) );
+  return ( new_s );
 }
 
 function pad0 (val, n) {
@@ -106,19 +108,19 @@ function pad0 (val, n) {
 }
 
 function hex (val) {
-	return ( val.toString(16).toUpperCase() );
+  return ( val.toString(16).toUpperCase() );
 }
 
 function hex2 (val) {
-	return ( pad0 ( val.toString(16).toUpperCase(), 2 ) );
+  return ( pad0 ( val.toString(16).toUpperCase(), 2 ) );
 }
 
 function hex3 (val) {
-	return ( pad0 ( val.toString(16).toUpperCase(), 3 ) );
+  return ( pad0 ( val.toString(16).toUpperCase(), 3 ) );
 }
 
 function hex4 (val) {
-	return ( pad0 ( val.toString(16).toUpperCase(), 4 ) );
+  return ( pad0 ( val.toString(16).toUpperCase(), 4 ) );
 }
 
 function clear_screen() {
@@ -128,7 +130,7 @@ function clear_screen() {
       screen[r][c] = 0;
     }
   }
-	draw_screen();
+  draw_screen();
 }
 
 function draw_screen() {
@@ -140,8 +142,8 @@ function draw_screen() {
   for (r=0; r<num_rows; r++) {
     for (c=0; c<num_cols; c++) {
       if (screen[r][c] != 0) {
-	      ctxt.fillRect(5*c, 5*r, 5, 5);
-	    }
+        ctxt.fillRect(5*c, 5*r, 5, 5);
+      }
     }
   }
 }
@@ -171,44 +173,45 @@ function update_display() {
   document.getElementById("N").value = N.toString();
   document.getElementById("ST").value = ST.toString();
   document.getElementById("CT").value = CT.toString();
+  document.getElementById("DT").value = DT.toString();
 }
 
 function init_machine() {
   // Initialize the memory
   mem = [];
   for (i=0; i<0x10000; i++) {
-    mem.push(0xff);
+    mem.push(0xFF);
   }
   // Load the Font data (80 bytes total)
   // Each entry is 4 columns x 5 rows
   // Sprites are 8 columns wide but
   // these only use the first 4 bits
   font_data = [
-		[0xF0, 0x90, 0x90, 0x90, 0xF0], // 0
-		[0x20, 0x60, 0x20, 0x20, 0x70], // 1
-		[0xF0, 0x10, 0xF0, 0x80, 0xF0], // 2
-		[0xF0, 0x10, 0xF0, 0x10, 0xF0], // 3
-		[0x90, 0x90, 0xF0, 0x10, 0x10], // 4
-		[0xF0, 0x80, 0xF0, 0x10, 0xF0], // 5
-		[0xF0, 0x80, 0xF0, 0x90, 0xF0], // 6
-		[0xF0, 0x10, 0x20, 0x40, 0x40], // 7
-		[0xF0, 0x90, 0xF0, 0x90, 0xF0], // 8
-		[0xF0, 0x90, 0xF0, 0x10, 0xF0], // 9
-		[0xF0, 0x90, 0xF0, 0x90, 0x90], // A
-		[0xE0, 0x90, 0xE0, 0x90, 0xE0], // B
-		[0xF0, 0x80, 0x80, 0x80, 0xF0], // C
-		[0xE0, 0x90, 0x90, 0x90, 0xE0], // D
-		[0xF0, 0x80, 0xF0, 0x80, 0xF0], // E
-		[0xF0, 0x80, 0xF0, 0x80, 0x80]  // F
-	];
-	i = font_addr;
-	// console.log ( "Loading Font Data" );
-	for (r=0; r<font_data.length; r++) {
-		for (c=0; c<font_data[r].length; c++) {
-			mem[i] = font_data[r][c];
-			i+=1;
-		}
-	}
+    [0xF0, 0x90, 0x90, 0x90, 0xF0], // 0
+    [0x20, 0x60, 0x20, 0x20, 0x70], // 1
+    [0xF0, 0x10, 0xF0, 0x80, 0xF0], // 2
+    [0xF0, 0x10, 0xF0, 0x10, 0xF0], // 3
+    [0x90, 0x90, 0xF0, 0x10, 0x10], // 4
+    [0xF0, 0x80, 0xF0, 0x10, 0xF0], // 5
+    [0xF0, 0x80, 0xF0, 0x90, 0xF0], // 6
+    [0xF0, 0x10, 0x20, 0x40, 0x40], // 7
+    [0xF0, 0x90, 0xF0, 0x90, 0xF0], // 8
+    [0xF0, 0x90, 0xF0, 0x10, 0xF0], // 9
+    [0xF0, 0x90, 0xF0, 0x90, 0x90], // A
+    [0xE0, 0x90, 0xE0, 0x90, 0xE0], // B
+    [0xF0, 0x80, 0x80, 0x80, 0xF0], // C
+    [0xE0, 0x90, 0x90, 0x90, 0xE0], // D
+    [0xF0, 0x80, 0xF0, 0x80, 0xF0], // E
+    [0xF0, 0x80, 0xF0, 0x80, 0x80]  // F
+  ];
+  i = font_addr;
+  // console.log ( "Loading Font Data" );
+  for (r=0; r<font_data.length; r++) {
+    for (c=0; c<font_data[r].length; c++) {
+      mem[i] = font_data[r][c];
+      i+=1;
+    }
+  }
   // Initialize the "V" registers
   V = [];
   for (i=0; i<16; i++) {
@@ -225,6 +228,7 @@ function init_machine() {
   }
   document.getElementById("ST").value = ST.toString();
   document.getElementById("CT").value = CT.toString();
+  document.getElementById("DT").value = DT.toString();
   update_display();
   draw_screen();
 }
@@ -242,7 +246,7 @@ function load_menus() {
 }
 
 function load_example() {
-  document.getElementById ( "source" ).value = document.getElementById("Draw Square Figure 8").innerHTML;
+  document.getElementById ( "source" ).value = document.getElementById("CHIP-8 Test Suite").innerHTML;
 }
 
 function onload() {
@@ -299,281 +303,281 @@ function assemble_text ( srctxt ) {
   bintxt = "";
 
   // Normalize line endings and remove empty lines
-	text = replaceAll( srctxt, "\r", "\n");
-	while (text.indexOf("\n\n") >= 0) {
-		text = replaceAll(text, "\n\n", "\n");
-	}
-	// console.log ( text );
-	// Convert all white space to spaces
-	// text = text.replace(/\s+/g,' ');
+  text = replaceAll( srctxt, "\r", "\n");
+  while (text.indexOf("\n\n") >= 0) {
+    text = replaceAll(text, "\n\n", "\n");
+  }
+  // console.log ( text );
+  // Convert all white space to spaces
+  // text = text.replace(/\s+/g,' ');
   // Remove all double spaces
-	while (text.indexOf("  ") >= 0) {
-		text = replaceAll(text, "  ", " ");
-	}
-	// console.log ( text );
-	// Split the text into an array of lines
+  while (text.indexOf("  ") >= 0) {
+    text = replaceAll(text, "  ", " ");
+  }
+  // console.log ( text );
+  // Split the text into an array of lines
   lines = text.split("\n");
-	// console.log ( "lines=" + lines );
+  // console.log ( "lines=" + lines );
 
   // Remove all comments and empty lines
   new_lines = [];
-	for (l=0; l<lines.length; l++) {
-	  line = lines[l].toUpperCase().trim();
-	  if (line.indexOf(";") >= 0) {
-			// Remove the comment
-			line = line.substr(0,line.indexOf(";")).trim();
-	  }
-	  if (line.trim().length > 0) {
-			new_lines.push ( line.trim() );
-	  }
-	}
-	lines = new_lines;
+  for (l=0; l<lines.length; l++) {
+    line = lines[l].toUpperCase().trim();
+    if (line.indexOf(";") >= 0) {
+      // Remove the comment
+      line = line.substr(0,line.indexOf(";")).trim();
+    }
+    if (line.trim().length > 0) {
+      new_lines.push ( line.trim() );
+    }
+  }
+  lines = new_lines;
 
-	// Remove any and all last lines containing empty labels
-	while ( lines[lines.length-1].indexOf(":") == (lines[lines.length-1].length-1) ) {
-	  // Copy all but the last line
-	  new_lines = [];
-		for (l=0; l<(lines.length-1); l++) {
-		  new_lines[l] = lines[l];
-		}
-		lines = new_lines;
-	}
+  // Remove any and all last lines containing empty labels
+  while ( lines[lines.length-1].indexOf(":") == (lines[lines.length-1].length-1) ) {
+    // Copy all but the last line
+    new_lines = [];
+    for (l=0; l<(lines.length-1); l++) {
+      new_lines[l] = lines[l];
+    }
+    lines = new_lines;
+  }
 
-	// Merge empty labels with subsequent lines
-	new_lines = [];
-	l = 0;
-	while (l<lines.length) {
-		line = lines[l];
-		if (line.indexOf(":") == (line.length-1)) {
-			// This is an empty label so join it with the next line
-			l = l + 1;
-			new_lines.push ( line + " " + lines[l] );
-		} else {
-			// Just push this line by itself
-			new_lines.push ( line );
-		}
-		l = l + 1;
-	}
-	lines = new_lines;
+  // Merge empty labels with subsequent lines
+  new_lines = [];
+  l = 0;
+  while (l<lines.length) {
+    line = lines[l];
+    if (line.indexOf(":") == (line.length-1)) {
+      // This is an empty label so join it with the next line
+      l = l + 1;
+      new_lines.push ( line + " " + lines[l] );
+    } else {
+      // Just push this line by itself
+      new_lines.push ( line );
+    }
+    l = l + 1;
+  }
+  lines = new_lines;
 
   // Compute the label addresses
   label_dict = {};
-	for (l=0; l<lines.length; l++) {
-	  line = lines[l].toUpperCase().trim();
-	  if (line.indexOf(":") >= 0) {
-	    // Store the label and its location
-	    label = line.substr(0,line.indexOf(":"));
-	    label_dict[label] = ((2*l)+0x200).toString(16);
-	    while (label_dict[label].length < 3) {
-	      label_dict[label] = '0' + label_dict[label];
-	    }
-	    // Remove the label from the line of code for assembly
-	    lines[l] = lines[l].substr(line.indexOf(":")+1).trim();
-	  }
-	}
-	keys = Object.keys(label_dict);
-	// console.log ( "labels = " + keys );
-	for (l=0; l<lines.length; l++) {
-	  for (ki=0; ki<keys.length; ki++) {
-	    // console.log ( "Searching for " + keys[ki] );
+  for (l=0; l<lines.length; l++) {
+    line = lines[l].toUpperCase().trim();
+    if (line.indexOf(":") >= 0) {
+      // Store the label and its location
+      label = line.substr(0,line.indexOf(":"));
+      label_dict[label] = ((2*l)+0x200).toString(16);
+      while (label_dict[label].length < 3) {
+        label_dict[label] = '0' + label_dict[label];
+      }
+      // Remove the label from the line of code for assembly
+      lines[l] = lines[l].substr(line.indexOf(":")+1).trim();
+    }
+  }
+  keys = Object.keys(label_dict);
+  // console.log ( "labels = " + keys );
+  for (l=0; l<lines.length; l++) {
+    for (ki=0; ki<keys.length; ki++) {
+      // console.log ( "Searching for " + keys[ki] );
       lines[l] = replaceAll( lines[l].toUpperCase(), keys[ki], label_dict[keys[ki]]);
-	  }
-	}
+    }
+  }
 
-	// Process the lines one by one
-	for (l=0; l<lines.length; l++) {
-	  line = lines[l].toUpperCase().trim();
-		// line = lines[l].replace(/\s+/g,''); // Remove all white space
-	  if (line.indexOf(";") >= 0) {
-			// Remove the comment
-			line = line.substr(0,line.indexOf(";")).trim();
-	  }
-	  if (line.length > 0) {
-		  if (line.indexOf(":") >= 0) {
-				// Throw away the labels for now
-				line = line.substr(line.indexOf(":")+1).trim();
-		  }
-		  if (line.slice(0,5) == "DATA ") {
-				bintxt += line.slice(5).trim() + "\n";
-		  } else if (line.slice(0,4) == "SYS ") {
-				bintxt += "0" + line.slice(4).trim() + "\n";
-		  } else if (line.slice(0,3) == "CLS") {
-				bintxt += "00E0\n";
-		  } else if (line.slice(0,3) == "RET") {
-				bintxt += "00EE\n";
-		  } else if (line.slice(0,3) == "JP ") {
-				// JP can take the following forms:
-				//   JP nnn    -->  1nnn
-				//   JP V0,nnn -->  Bnnn
-				if (line.indexOf(",") >= 0) {
-					bintxt += "B" + line.slice(line.indexOf(",")+1).trim() + "\n";
-			  } else {
-					bintxt += "1" + line.slice(2).trim() + "\n";
-			  }
-		  } else if (line.slice(0,5) == "CALL ") {
-				// CALL takes the following form:
-				//   CALL nnn
-				bintxt += "2" + line.slice(5).trim() + "\n";
-		  } else if (line.slice(0,3) == "SE ") {
-				// SE (Skip when Equal) can take the following forms:
-				//   SE Vx,byte -> 3xbb
-				//   SE Vx,Vy   -> 5xy0
-				if (line.split(",")[1].indexOf("V") < 0) {
-				  // SE Vx,byte -> 3xbb
-				  vb = get_vx_comma_b ( line.slice(3) );
-					bintxt += "3" + vb[0] + vb[1] + "\n";
-				} else {
-					// SE Vx,Vy   -> 5xy0
-				  vv = get_vx_comma_vy ( line.slice(3) );
-					bintxt += "5" + vv[0] + vv[1] + "0" + "\n";
-			  }
-		  } else if (line.slice(0,4) == "SNE ") {
-				// SNE (Skip when Not Equal) can take the following forms:
-				//   SNE Vx,byte -> 4xbb
-				//   SNE Vx,Vy   -> 9xy0
-				if (line.split(",")[1].indexOf("V") < 0) {
-				  // SNE Vx,byte -> 4xbb
-				  vb = get_vx_comma_b ( line.slice(3) );
-					bintxt += "4" + vb[0] + vb[1] + "\n";
-				} else {
-					// SNE Vx,Vy   -> 9xy0
-				  vv = get_vx_comma_vy ( line.slice(3) );
-					bintxt += "9" + vv[0] + vv[1] + "0" + "\n";
-			  }
-		  } else if (line.slice(0,3) == "LD ") {
-				// LD (Load) can take the following forms:
-				//   LD Vx,byte -> 6xbb
-				//   LD Vx,Vy   -> 8xy0
-				//   LD I,nnn   -> Annn
-				//   LD Vx,DT   -> Fx07
-				//   LD Vx,K    -> Fx0A
-				//   LD DT,Vx   -> Fx15
-				//   LD ST,Vx   -> Fx18
-				//   LD F,Vx    -> Fx29
-				//   LD B,Vx    -> Fx33
-				//   LD [I],Vx  -> Fx55
-				//   LD Vx,[I]  -> Fx65
-				pars = line.slice(3).trim().split(",");
-				pars[0] = pars[0].trim();
-				pars[1] = pars[1].trim();
-				// Handle the easy ones first
-				if (pars[0] == "I") {
-				  // LD I,nnn   -> Annn
-					bintxt += "A" + pars[1].trim() + "\n";
-				} else if (pars[0] == "DT") {
-				  // LD DT,Vx   -> Fx15
-					bintxt += "F" + pars[1].slice(1).trim() + "15\n";
-				} else if (pars[0] == "ST") {
-					// LD ST,Vx   -> Fx18
-					bintxt += "F" + pars[1].slice(1).trim() + "18\n";
-				} else if (pars[0] == "F") {
-					// LD F,Vx    -> Fx29
-					bintxt += "F" + pars[1].slice(1).trim() + "29\n";
-				} else if (pars[0] == "B") {
-					// LD B,Vx    -> Fx33
-					bintxt += "F" + pars[1].slice(1).trim() + "33\n";
-				} else if (pars[0] == "[I]") {
-					// LD [I],Vx  -> Fx55
-					bintxt += "F" + pars[1].slice(1).trim() + "55\n";
-				} else if (pars[1] == "DT") {
-				  // LD Vx,DT   -> Fx07
-					bintxt += "F" + pars[0].slice(1).trim() + "07\n";
-				} else if (pars[1] == "K") {
-				  // LD Vx,K    -> Fx0A
-				} else if (pars[1] == "[I]") {
-					// LD Vx,[I]  -> Fx65
-					bintxt += "F" + pars[0].slice(1).trim() + "65\n";
-				} else {
-				  if (line.split(",")[1].indexOf("V") < 0) {
-						// LD Vx,byte -> 6xbb
-						vb = get_vx_comma_b ( line.slice(3) );
-					  bintxt += "6" + vb[0] + vb[1] + "\n";
-				  } else {
-						// LD Vx,Vy   -> 8xy0
-						vv = get_vx_comma_vy ( line.slice(3) );
-						bintxt += "8" + vv[0] + vv[1] + "0" + "\n";
-					}
-				}
-		  } else if (line.slice(0,4) == "ADD ") {
-				// ADD can take the following forms:
-				//   ADD Vx,byte -> 7xbb
-				//   ADD Vx,Vy   -> 8xy4
-				//   ADD I,Vx    -> Fx1E
-				pars = line.slice(3).trim().split(",");
-				pars[0] = pars[0].trim();
-				pars[1] = pars[1].trim();
-				if (pars[0] == "I") {
-				  // ADD I,Vx    -> Fx1E
-					bintxt += "F" + pars[1].slice(1).trim() + "1E\n";
-			  } else {
-				  if (pars[1].indexOf("V") < 0) {
-						// ADD Vx,byte -> 7xbb
-						vb = get_vx_comma_b ( line.slice(3) );
-					  bintxt += "7" + vb[0] + vb[1] + "\n";
-				  } else {
-				  	// ADD Vx,Vy   -> 8xy0
-						vv = get_vx_comma_vy ( line.slice(3) );
-					  bintxt += "8" + vv[0] + vv[1] + "4" + "\n";
-					}
-			  }
-		  } else if (line.slice(0,3) == "OR ") {
-				vv = get_vx_comma_vy ( line.slice(2).trim() );
-			  bintxt += "8" + vv[0] + vv[1] + "1" + "\n";
-		  } else if (line.slice(0,4) == "AND ") {
-				vv = get_vx_comma_vy ( line.slice(3).trim() );
-			  bintxt += "8" + vv[0] + vv[1] + "2" + "\n";
-		  } else if (line.slice(0,4) == "XOR ") {
-				vv = get_vx_comma_vy ( line.slice(3).trim() );
-			  bintxt += "8" + vv[0] + vv[1] + "3" + "\n";
-		  } else if (line.slice(0,4) == "SUB ") {
-				vv = get_vx_comma_vy ( line.slice(3).trim() );
-			  bintxt += "8" + vv[0] + vv[1] + "5" + "\n";
-		  } else if (line.slice(0,4) == "SHR ") {
-				if (line.indexOf(",") >= 0) {
-				  // SHR Vx,Vy
-				  vv = get_vx_comma_vy ( line.slice(3).trim() );
-				  if (vv[0].length <= 0) {
-						vv[0] = "?";
-				  }
-				} else {
-				  // SHR Vx
-				  vv = [line.slice(3).trim()[1],"1"];
-				}
-			  bintxt += "8" + vv[0] + vv[1] + "6" + "\n";
-		  } else if (line.slice(0,5) == "SUBN ") {
-				vv = get_vx_comma_vy ( line.slice(4).trim() );
-			  bintxt += "8" + vv[0] + vv[1] + "7" + "\n";
-		  } else if (line.slice(0,4) == "SHL ") {
-				if (line.indexOf(",") >= 0) {
-				  // SHL Vx,Vy
-				  vv = get_vx_comma_vy ( line.slice(3).trim() );
-				  if (vv[0].length <= 0) {
-						vv[0] = "?";
-				  }
-				} else {
-				  // SHL Vx
-				  vv = [line.slice(3).trim()[1],"1"];
-				}
-			  bintxt += "8" + vv[0] + vv[1] + "E" + "\n";
-		  } else if (line.slice(0,4) == "RND ") {
-				vb = get_vx_comma_b ( line.slice(3) );
-			  bintxt += "C" + vb[0] + vb[1] + "\n";
-		  } else if (line.slice(0,4) == "DRW ") {
-		  	pars = line.slice(3).split(",");
-		  	pars[0] = pars[0].trim();
-		  	pars[1] = pars[1].trim();
-		  	pars[2] = pars[2].trim();
-			  bintxt += "D" + pars[0][1] + pars[1][1] + pars[2][0] + "\n";
-		  } else if (line.slice(0,4) == "SKP ") {
-		  	vx = line.slice(3).trim();
-			  bintxt += "E" + vx[1] + "9E" + "\n";
-		  } else if (line.slice(0,5) == "SKNP ") {
-		  	vx = line.slice(4).trim();
-			  bintxt += "E" + vx[1] + "A1" + "\n";
-		  } else {
-				bintxt += "[??]" + line + "\n";
-		  }
-		}
+  // Process the lines one by one
+  for (l=0; l<lines.length; l++) {
+    line = lines[l].toUpperCase().trim();
+    // line = lines[l].replace(/\s+/g,''); // Remove all white space
+    if (line.indexOf(";") >= 0) {
+      // Remove the comment
+      line = line.substr(0,line.indexOf(";")).trim();
+    }
+    if (line.length > 0) {
+      if (line.indexOf(":") >= 0) {
+        // Throw away the labels for now
+        line = line.substr(line.indexOf(":")+1).trim();
+      }
+      if (line.slice(0,5) == "DATA ") {
+        bintxt += line.slice(5).trim() + "\n";
+      } else if (line.slice(0,4) == "SYS ") {
+        bintxt += "0" + line.slice(4).trim() + "\n";
+      } else if (line.slice(0,3) == "CLS") {
+        bintxt += "00E0\n";
+      } else if (line.slice(0,3) == "RET") {
+        bintxt += "00EE\n";
+      } else if (line.slice(0,3) == "JP ") {
+        // JP can take the following forms:
+        //   JP nnn    -->  1nnn
+        //   JP V0,nnn -->  Bnnn
+        if (line.indexOf(",") >= 0) {
+          bintxt += "B" + line.slice(line.indexOf(",")+1).trim() + "\n";
+        } else {
+          bintxt += "1" + line.slice(2).trim() + "\n";
+        }
+      } else if (line.slice(0,5) == "CALL ") {
+        // CALL takes the following form:
+        //   CALL nnn
+        bintxt += "2" + line.slice(5).trim() + "\n";
+      } else if (line.slice(0,3) == "SE ") {
+        // SE (Skip when Equal) can take the following forms:
+        //   SE Vx,byte -> 3xbb
+        //   SE Vx,Vy   -> 5xy0
+        if (line.split(",")[1].indexOf("V") < 0) {
+          // SE Vx,byte -> 3xbb
+          vb = get_vx_comma_b ( line.slice(3) );
+          bintxt += "3" + vb[0] + vb[1] + "\n";
+        } else {
+          // SE Vx,Vy   -> 5xy0
+          vv = get_vx_comma_vy ( line.slice(3) );
+          bintxt += "5" + vv[0] + vv[1] + "0" + "\n";
+        }
+      } else if (line.slice(0,4) == "SNE ") {
+        // SNE (Skip when Not Equal) can take the following forms:
+        //   SNE Vx,byte -> 4xbb
+        //   SNE Vx,Vy   -> 9xy0
+        if (line.split(",")[1].indexOf("V") < 0) {
+          // SNE Vx,byte -> 4xbb
+          vb = get_vx_comma_b ( line.slice(3) );
+          bintxt += "4" + vb[0] + vb[1] + "\n";
+        } else {
+          // SNE Vx,Vy   -> 9xy0
+          vv = get_vx_comma_vy ( line.slice(3) );
+          bintxt += "9" + vv[0] + vv[1] + "0" + "\n";
+        }
+      } else if (line.slice(0,3) == "LD ") {
+        // LD (Load) can take the following forms:
+        //   LD Vx,byte -> 6xbb
+        //   LD Vx,Vy   -> 8xy0
+        //   LD I,nnn   -> Annn
+        //   LD Vx,DT   -> Fx07
+        //   LD Vx,K    -> Fx0A
+        //   LD DT,Vx   -> Fx15
+        //   LD ST,Vx   -> Fx18
+        //   LD F,Vx    -> Fx29
+        //   LD B,Vx    -> Fx33
+        //   LD [I],Vx  -> Fx55
+        //   LD Vx,[I]  -> Fx65
+        pars = line.slice(3).trim().split(",");
+        pars[0] = pars[0].trim();
+        pars[1] = pars[1].trim();
+        // Handle the easy ones first
+        if (pars[0] == "I") {
+          // LD I,nnn   -> Annn
+          bintxt += "A" + pars[1].trim() + "\n";
+        } else if (pars[0] == "DT") {
+          // LD DT,Vx   -> Fx15
+          bintxt += "F" + pars[1].slice(1).trim() + "15\n";
+        } else if (pars[0] == "ST") {
+          // LD ST,Vx   -> Fx18
+          bintxt += "F" + pars[1].slice(1).trim() + "18\n";
+        } else if (pars[0] == "F") {
+          // LD F,Vx    -> Fx29
+          bintxt += "F" + pars[1].slice(1).trim() + "29\n";
+        } else if (pars[0] == "B") {
+          // LD B,Vx    -> Fx33
+          bintxt += "F" + pars[1].slice(1).trim() + "33\n";
+        } else if (pars[0] == "[I]") {
+          // LD [I],Vx  -> Fx55
+          bintxt += "F" + pars[1].slice(1).trim() + "55\n";
+        } else if (pars[1] == "DT") {
+          // LD Vx,DT   -> Fx07
+          bintxt += "F" + pars[0].slice(1).trim() + "07\n";
+        } else if (pars[1] == "K") {
+          // LD Vx,K    -> Fx0A
+        } else if (pars[1] == "[I]") {
+          // LD Vx,[I]  -> Fx65
+          bintxt += "F" + pars[0].slice(1).trim() + "65\n";
+        } else {
+          if (line.split(",")[1].indexOf("V") < 0) {
+            // LD Vx,byte -> 6xbb
+            vb = get_vx_comma_b ( line.slice(3) );
+            bintxt += "6" + vb[0] + vb[1] + "\n";
+          } else {
+            // LD Vx,Vy   -> 8xy0
+            vv = get_vx_comma_vy ( line.slice(3) );
+            bintxt += "8" + vv[0] + vv[1] + "0" + "\n";
+          }
+        }
+      } else if (line.slice(0,4) == "ADD ") {
+        // ADD can take the following forms:
+        //   ADD Vx,byte -> 7xbb
+        //   ADD Vx,Vy   -> 8xy4
+        //   ADD I,Vx    -> Fx1E
+        pars = line.slice(3).trim().split(",");
+        pars[0] = pars[0].trim();
+        pars[1] = pars[1].trim();
+        if (pars[0] == "I") {
+          // ADD I,Vx    -> Fx1E
+          bintxt += "F" + pars[1].slice(1).trim() + "1E\n";
+        } else {
+          if (pars[1].indexOf("V") < 0) {
+            // ADD Vx,byte -> 7xbb
+            vb = get_vx_comma_b ( line.slice(3) );
+            bintxt += "7" + vb[0] + vb[1] + "\n";
+          } else {
+            // ADD Vx,Vy   -> 8xy0
+            vv = get_vx_comma_vy ( line.slice(3) );
+            bintxt += "8" + vv[0] + vv[1] + "4" + "\n";
+          }
+        }
+      } else if (line.slice(0,3) == "OR ") {
+        vv = get_vx_comma_vy ( line.slice(2).trim() );
+        bintxt += "8" + vv[0] + vv[1] + "1" + "\n";
+      } else if (line.slice(0,4) == "AND ") {
+        vv = get_vx_comma_vy ( line.slice(3).trim() );
+        bintxt += "8" + vv[0] + vv[1] + "2" + "\n";
+      } else if (line.slice(0,4) == "XOR ") {
+        vv = get_vx_comma_vy ( line.slice(3).trim() );
+        bintxt += "8" + vv[0] + vv[1] + "3" + "\n";
+      } else if (line.slice(0,4) == "SUB ") {
+        vv = get_vx_comma_vy ( line.slice(3).trim() );
+        bintxt += "8" + vv[0] + vv[1] + "5" + "\n";
+      } else if (line.slice(0,4) == "SHR ") {
+        if (line.indexOf(",") >= 0) {
+          // SHR Vx,Vy
+          vv = get_vx_comma_vy ( line.slice(3).trim() );
+          if (vv[0].length <= 0) {
+            vv[0] = "?";
+          }
+        } else {
+          // SHR Vx
+          vv = [line.slice(3).trim()[1],"1"];
+        }
+        bintxt += "8" + vv[0] + vv[1] + "6" + "\n";
+      } else if (line.slice(0,5) == "SUBN ") {
+        vv = get_vx_comma_vy ( line.slice(4).trim() );
+        bintxt += "8" + vv[0] + vv[1] + "7" + "\n";
+      } else if (line.slice(0,4) == "SHL ") {
+        if (line.indexOf(",") >= 0) {
+          // SHL Vx,Vy
+          vv = get_vx_comma_vy ( line.slice(3).trim() );
+          if (vv[0].length <= 0) {
+            vv[0] = "?";
+          }
+        } else {
+          // SHL Vx
+          vv = [line.slice(3).trim()[1],"1"];
+        }
+        bintxt += "8" + vv[0] + vv[1] + "E" + "\n";
+      } else if (line.slice(0,4) == "RND ") {
+        vb = get_vx_comma_b ( line.slice(3) );
+        bintxt += "C" + vb[0] + vb[1] + "\n";
+      } else if (line.slice(0,4) == "DRW ") {
+        pars = line.slice(3).split(",");
+        pars[0] = pars[0].trim();
+        pars[1] = pars[1].trim();
+        pars[2] = pars[2].trim();
+        bintxt += "D" + pars[0][1] + pars[1][1] + pars[2][0] + "\n";
+      } else if (line.slice(0,4) == "SKP ") {
+        vx = line.slice(3).trim();
+        bintxt += "E" + vx[1] + "9E" + "\n";
+      } else if (line.slice(0,5) == "SKNP ") {
+        vx = line.slice(4).trim();
+        bintxt += "E" + vx[1] + "A1" + "\n";
+      } else {
+        bintxt += "[??]" + line + "\n";
+      }
+    }
   }
   return ( bintxt );
 }
@@ -586,25 +590,25 @@ function assemble() {
 
 function get_machine_lines ( text_in ) {
   // Normalize line endings and remove empty lines
-	text = replaceAll( text_in, "\r", "\n");
-	while (text.indexOf("\n\n") >= 0) {
-		text = replaceAll(text, "\n\n", "\n");
-	}
-	// Convert to upper case
-	text = "" + text.toUpperCase();
-	// Remove all line endings
-	while (text.indexOf("\n") >= 0) {
-		text = replaceAll(text, "\n", "");
-	}
-	// Remove all spaces
-	while (text.indexOf(" ") >= 0) {
-		text = replaceAll(text, " ", "");
-	}
-	// Split by 4 digits per instruction
+  text = replaceAll( text_in, "\r", "\n");
+  while (text.indexOf("\n\n") >= 0) {
+    text = replaceAll(text, "\n\n", "\n");
+  }
+  // Convert to upper case
+  text = "" + text.toUpperCase();
+  // Remove all line endings
+  while (text.indexOf("\n") >= 0) {
+    text = replaceAll(text, "\n", "");
+  }
+  // Remove all spaces
+  while (text.indexOf(" ") >= 0) {
+    text = replaceAll(text, " ", "");
+  }
+  // Split by 4 digits per instruction
   lines = [];
   while (text.length > 0) {
-		lines.push ( text.slice(0,4) );
-		text = text.slice(4)
+    lines.push ( text.slice(0,4) );
+    text = text.slice(4)
   }
   return ( lines );
 }
@@ -613,112 +617,112 @@ function disassemble_line ( line ) {
 
   result = "";
 
-	// #### : 00E0 00EE
+  // #### : 00E0 00EE
   if (line == "00E0") {
-	  result += "CLS";
-	} else if (line == "00EE") {
-	  result += "RET";
+    result += "CLS";
+  } else if (line == "00EE") {
+    result += "RET";
 
-	// #nnn : 0 1 2 A B
-	} else if (line[0] == "0") {
-	  result += "SYS " + line.slice(1);
-	} else if (line[0] == "1") {
-	  // result += "JP L" + line.slice(1);
-	  result += "JP " + line.slice(1);
-	} else if (line[0] == "2") {
-	  // result += "CALL L" + line.slice(1);
-	  result += "CALL " + line.slice(1);
-	} else if (line[0] == "A") {
-	  result += "LD I," + line.slice(1);
-	} else if (line[0] == "B") {
-	  result += "JP V0," + line.slice(1);
+  // #nnn : 0 1 2 A B
+  } else if (line[0] == "0") {
+    result += "SYS " + line.slice(1);
+  } else if (line[0] == "1") {
+    // result += "JP L" + line.slice(1);
+    result += "JP " + line.slice(1);
+  } else if (line[0] == "2") {
+    // result += "CALL L" + line.slice(1);
+    result += "CALL " + line.slice(1);
+  } else if (line[0] == "A") {
+    result += "LD I," + line.slice(1);
+  } else if (line[0] == "B") {
+    result += "JP V0," + line.slice(1);
 
-	// #nkk or #xkk : 3 4 6 7 C
-	} else if (line[0] == "3") {
-	  result += "SE V" + line[1] + "," + line.slice(2);
-	} else if (line[0] == "4") {
-	  result += "SNE V" + line[1] + "," + line.slice(2);
-	} else if (line[0] == "6") {
-	  result += "LD V" + line[1] + "," + line.slice(2);
-	} else if (line[0] == "7") {
-	  result += "ADD V" + line[1] + "," + line.slice(2);
-	} else if (line[0] == "C") {
-	  result += "RND V" + line[1] + "," + line.slice(2);
+  // #nkk or #xkk : 3 4 6 7 C
+  } else if (line[0] == "3") {
+    result += "SE V" + line[1] + "," + line.slice(2);
+  } else if (line[0] == "4") {
+    result += "SNE V" + line[1] + "," + line.slice(2);
+  } else if (line[0] == "6") {
+    result += "LD V" + line[1] + "," + line.slice(2);
+  } else if (line[0] == "7") {
+    result += "ADD V" + line[1] + "," + line.slice(2);
+  } else if (line[0] == "C") {
+    result += "RND V" + line[1] + "," + line.slice(2);
 
-	// #xy# : 5, 8, 9, D
-	} else if (line[0] == "5") {
-	  if (line[3] == "0") {
-		  result += "SE V" + line[1] + ",V" + line[2];
-		} else {
-		  result += "DATA " + line;
-		}
-	} else if (line[0] == "8") {
-	  if (line[3] == "0") {
-		  result += "LD V" + line[1] + ",V" + line[2];
-		} else if (line[3] == "1") {
-		  result += "OR V" + line[1] + ",V" + line[2];
-		} else if (line[3] == "2") {
-		  result += "AND V" + line[1] + ",V" + line[2];
-		} else if (line[3] == "3") {
-		  result += "XOR V" + line[1] + ",V" + line[2];
-		} else if (line[3] == "4") {
-		  result += "ADD V" + line[1] + ",V" + line[2];
-		} else if (line[3] == "5") {
-		  result += "SUB V" + line[1] + ",V" + line[2];
-		} else if (line[3] == "6") {
-		  result += "SHR V" + line[1] + ",V" + line[2];
-		} else if (line[3] == "7") {
-		  result += "SUBN V" + line[1] + ",V" + line[2];
-		} else if (line[3] == "E") {
-		  result += "SHL V" + line[1] + ",V" + line[2];
-		} else {
-		  result += "DATA " + line;
-		}
-	} else if (line[0] == "9") {
-	  if (line[3] == "0") {
-		  result += "SNE V" + line[1] + ",V" + line[2];
-		} else {
-		  result += "DATA " + line;
-		}
-	} else if (line[0] == "D") {
-	  result += "DRW V" + line[1] + ",V" + line[2] + "," + line[3];
+  // #xy# : 5, 8, 9, D
+  } else if (line[0] == "5") {
+    if (line[3] == "0") {
+      result += "SE V" + line[1] + ",V" + line[2];
+    } else {
+      result += "DATA " + line;
+    }
+  } else if (line[0] == "8") {
+    if (line[3] == "0") {
+      result += "LD V" + line[1] + ",V" + line[2];
+    } else if (line[3] == "1") {
+      result += "OR V" + line[1] + ",V" + line[2];
+    } else if (line[3] == "2") {
+      result += "AND V" + line[1] + ",V" + line[2];
+    } else if (line[3] == "3") {
+      result += "XOR V" + line[1] + ",V" + line[2];
+    } else if (line[3] == "4") {
+      result += "ADD V" + line[1] + ",V" + line[2];
+    } else if (line[3] == "5") {
+      result += "SUB V" + line[1] + ",V" + line[2];
+    } else if (line[3] == "6") {
+      result += "SHR V" + line[1] + ",V" + line[2];
+    } else if (line[3] == "7") {
+      result += "SUBN V" + line[1] + ",V" + line[2];
+    } else if (line[3] == "E") {
+      result += "SHL V" + line[1] + ",V" + line[2];
+    } else {
+      result += "DATA " + line;
+    }
+  } else if (line[0] == "9") {
+    if (line[3] == "0") {
+      result += "SNE V" + line[1] + ",V" + line[2];
+    } else {
+      result += "DATA " + line;
+    }
+  } else if (line[0] == "D") {
+    result += "DRW V" + line[1] + ",V" + line[2] + "," + line[3];
 
-	// #x## : E, F
-	} else if (line[0] == "E") {
-	  if (line.slice(2) == "9E") {
-		  result += "SKP V" + line[1];
-	  } else if (line.slice(2) == "A1") {
-		  result += "SKNP V" + line[1];
-		} else {
-		  result += "DATA " + line;
-		}
-	} else if (line[0] == "F") {
-	  if (line.slice(2) == "07") {
-		  result += "LD V" + line[1] + ",DT";
-	  } else if (line.slice(2) == "0A") {
-		  result += "LD V" + line[1] + ",K";
-	  } else if (line.slice(2) == "15") {
-		  result += "LD DT,V" + line[1];
-	  } else if (line.slice(2) == "18") {
-		  result += "LD ST,V" + line[1];
-	  } else if (line.slice(2) == "1E") {
-		  result += "ADD I,V" + line[1];
-	  } else if (line.slice(2) == "29") {
-		  result += "LD F,V" + line[1];
-	  } else if (line.slice(2) == "33") {
-		  result += "LD B,V" + line[1];
-	  } else if (line.slice(2) == "55") {
-		  result += "LD [I],V" + line[1];
-	  } else if (line.slice(2) == "65") {
-		  result += "LD V" + line[1] + ",[I]";
-		} else {
-		  result += "DATA " + line;
-		}
+  // #x## : E, F
+  } else if (line[0] == "E") {
+    if (line.slice(2) == "9E") {
+      result += "SKP V" + line[1];
+    } else if (line.slice(2) == "A1") {
+      result += "SKNP V" + line[1];
+    } else {
+      result += "DATA " + line;
+    }
+  } else if (line[0] == "F") {
+    if (line.slice(2) == "07") {
+      result += "LD V" + line[1] + ",DT";
+    } else if (line.slice(2) == "0A") {
+      result += "LD V" + line[1] + ",K";
+    } else if (line.slice(2) == "15") {
+      result += "LD DT,V" + line[1];
+    } else if (line.slice(2) == "18") {
+      result += "LD ST,V" + line[1];
+    } else if (line.slice(2) == "1E") {
+      result += "ADD I,V" + line[1];
+    } else if (line.slice(2) == "29") {
+      result += "LD F,V" + line[1];
+    } else if (line.slice(2) == "33") {
+      result += "LD B,V" + line[1];
+    } else if (line.slice(2) == "55") {
+      result += "LD [I],V" + line[1];
+    } else if (line.slice(2) == "65") {
+      result += "LD V" + line[1] + ",[I]";
+    } else {
+      result += "DATA " + line;
+    }
 
-	// Unknown
-	} else {
-	  result += "DATA " + line;
-	}
+  // Unknown
+  } else {
+    result += "DATA " + line;
+  }
 
   return ( result );
 }
@@ -728,21 +732,21 @@ function disassemble() {
   // console.log ("Disassemble code");
   bintxt = document.getElementById ( "machine" ).value;
   // Convert the text into lines
-	lines = get_machine_lines ( bintxt );
+  lines = get_machine_lines ( bintxt );
   // console.log ( "Text = " + bintxt );
   opts = document.getElementById ( "disassem_opts" ).value;
   // console.log ( "Disassemble with options: " + opts );
   // Clear the source window
   document.getElementById ( "source" ).value = "";
-	// Process the lines one by one
-	for (l=0; l<lines.length; l++) {
-		if (opts.indexOf("L") >= 0) {
-		  // document.getElementById ( "source" ).value += "L"+((l*2)+0x200).toString(16).toUpperCase() + ": ";
-		  document.getElementById ( "source" ).value += ((l*2)+0x200).toString(16).toUpperCase() + ": ";
-		}
-		if (opts.indexOf("H") >= 0) {
-		  document.getElementById ( "source" ).value += lines[l] + "  ";
-		}
+  // Process the lines one by one
+  for (l=0; l<lines.length; l++) {
+    if (opts.indexOf("L") >= 0) {
+      // document.getElementById ( "source" ).value += "L"+((l*2)+0x200).toString(16).toUpperCase() + ": ";
+      document.getElementById ( "source" ).value += ((l*2)+0x200).toString(16).toUpperCase() + ": ";
+    }
+    if (opts.indexOf("H") >= 0) {
+      document.getElementById ( "source" ).value += lines[l] + "  ";
+    }
     document.getElementById ( "source" ).value += disassemble_line ( lines[l] ) + "\n";
   }
 }
@@ -761,13 +765,13 @@ function load() {
   stop_running = true;
   bintxt = document.getElementById ( "machine" ).value;
   // Convert the text into lines of instructions
-	lines = get_machine_lines ( bintxt );
+  lines = get_machine_lines ( bintxt );
   addr = 0x0200;
-	for (i=0; i<lines.length; i++) {
-	  mem[addr++] = parseInt ( lines[i].slice(0,2), 16 );
-	  mem[addr++] = parseInt ( lines[i].slice(2,4), 16 );
-	}
-	update_display();
+  for (i=0; i<lines.length; i++) {
+    mem[addr++] = parseInt ( lines[i].slice(0,2), 16 );
+    mem[addr++] = parseInt ( lines[i].slice(2,4), 16 );
+  }
+  update_display();
 }
 
 function reset() {
@@ -776,16 +780,16 @@ function reset() {
   SP = 0x0001;
   I  = 0x0000;
   N = 0;
-	for (i=0; i<16; i++) {
-	  V[i] = 0;
-	}
+  for (i=0; i<16; i++) {
+    V[i] = 0;
+  }
   for (r=0; r<num_rows; r++) {
     for (c=0; c<num_cols; c++) {
       screen[r][c] = 0;
     }
   }
-	draw_screen();
-	update_display();
+  draw_screen();
+  update_display();
 }
 
 function step1() {
@@ -795,7 +799,7 @@ function step1() {
   if (instruction == 0x00E0) { // CLS
     // console.log ( "CLS" );
     clear_screen();
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if (instruction == 0x00EE) { // RET
     // console.log ( "RET" );
     // Cowgod: The interpreter sets the program counter to the address
@@ -806,7 +810,7 @@ function step1() {
   } else if ( (instruction & 0xF000) == 0x0000) {  // SYS NNN
     // console.log ( "SYS" );
     window.alert ( "The SYS instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x1000) {  // JP NNN
     // console.log ( "JP" );
     PC = instruction & 0xFFF;
@@ -814,7 +818,7 @@ function step1() {
     // console.log ( "CALL" );
     // Cowgod: The interpreter increments the stack pointer,
     //         then puts the current PC on the top of the stack.
-		//         The PC is then set to nnn.
+    //         The PC is then set to nnn.
 
     // Push the high byte onto the stack
     SP = SP + 1;
@@ -827,49 +831,49 @@ function step1() {
   } else if ( (instruction & 0xF000) == 0x3000) { // SE Vx,byte
     // console.log ( "SE Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     if ( V[(instruction&0x0F00)>>8] == (instruction&0x00FF) ) {
-		  PC = PC + 4;
-		} else {
-		  PC = PC + 2;
-		}
+      PC = PC + 4;
+    } else {
+      PC = PC + 2;
+    }
   } else if ( (instruction & 0xF000) == 0x4000) { // SNE Vx,byte
     // console.log ( "SNE - Skip if Not Equal immediate" );
     if ( V[(instruction&0x0F00)>>8] != (instruction&0x00FF) ) {
-		  PC = PC + 4;
-		} else {
-		  PC = PC + 2;
-		}
+      PC = PC + 4;
+    } else {
+      PC = PC + 2;
+    }
   } else if ( (instruction & 0xF000) == 0x5000) { // SE Vx,Vy
     // console.log ( "SE - Skip if Equal Reg" );
     if ( V[(instruction&0x0F00)>>8] == V[(instruction&0x00F0)>>4]  ) {
-		  PC = PC + 4;
-		} else {
-		  PC = PC + 2;
-		}
+      PC = PC + 4;
+    } else {
+      PC = PC + 2;
+    }
   } else if ( (instruction & 0xF000) == 0x6000) { // LD Vx,byte
     // console.log ( "LD immediate with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     V[(instruction&0x0F00)>>8] = instruction&0x00FF;
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x7000) { // ADD Vx,byte
     // console.log ( "ADD immediate === Add Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     x = (instruction&0x0F00)>>8;
     V[x] = V[x] + (instruction&0x00FF);
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8000) { // LD Vx,Vy
     // console.log ( "LD Vx,Vy" );
     V[(instruction&0x0F00)>>8] = V[(instruction&0x00F0)>>4];
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8001) { // OR Vx,Vy
     // console.log ( "OR Reg" );
     V[(instruction&0x0F00)>>8] = V[(instruction&0x0F00)>>8] | V[(instruction&0x00F0)>>4];
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8002) { // AND Vx,Vy
     // console.log ( "AND Reg" );
     V[(instruction&0x0F00)>>8] = V[(instruction&0x0F00)>>8] & V[(instruction&0x00F0)>>4];
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8003) { // XOR Vx,Vy
     // console.log ( "XOR Reg" );
     V[(instruction&0x0F00)>>8] = V[(instruction&0x0F00)>>8] ^ V[(instruction&0x00F0)>>4];
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8004) { // ADD Vx,Vy
     // console.log ( "ADD Reg" );
     result = V[(instruction&0x0F00)>>8] + V[(instruction&0x00F0)>>4];
@@ -879,7 +883,7 @@ function step1() {
       V[0xF] = 0;
     }
     V[(instruction&0x0F00)>>8] = result & 0xFF;
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8005) { // SUB Vx,Vy: Vx = Vx - Vy
     // console.log ( "SUB Reg" );
     result = V[(instruction&0x0F00)>>8] - V[(instruction&0x00F0)>>4];
@@ -889,12 +893,12 @@ function step1() {
       V[0xF] = 1;
     }
     V[(instruction&0x0F00)>>8] = result & 0xFF;
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8006) { // SHR Vx,Vy: Vx = Vy >> 1
     // console.log ( "SHR" );
     V[0xF] = V[(instruction&0x00F0)>>4] & 0x01;
     V[(instruction&0x0F00)>>8] = V[(instruction&0x00F0)>>4] >> 1;
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8007) { // SUBN Vx,Vy: Vx = Vy - Vx
     // console.log ( "SUBN" );
     result = V[(instruction&0x00F0)>>4] - V[(instruction&0x0F00)>>8];
@@ -904,30 +908,30 @@ function step1() {
       V[0xF] = 1;
     }
     V[(instruction&0x0F00)>>8] = result & 0xFF;
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x800E) { // SHL Vx,Vy
     // console.log ( "SHL" );
     V[0xF] = (V[(instruction&0x00F0)>>4] >> 7) & 0x01;
     V[(instruction&0x0F00)>>8] = (V[(instruction&0x00F0)>>4] << 1) & 0xff;
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x9000) { // SNE Vx,Vy
     // console.log ( "SNE - Skip if Not Equal Reg" );
     if ( V[(instruction&0x0F00)>>8] != V[(instruction&0x00F0)>>4] ) {
-		  PC = PC + 4;
-		} else {
-		  PC = PC + 2;
-		}
+      PC = PC + 4;
+    } else {
+      PC = PC + 2;
+    }
   } else if ( (instruction & 0xF000) == 0xA000) { // I = NNN
     // console.log ( "LD I, addr" );
     I = instruction & 0xFFF;
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0xB000) { // JP V0,NNN
     // console.log ( "JP V0, addr" );
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0xC000) { // RND Vx,byte
-		// console.log ( "RND Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
+    // console.log ( "RND Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     V[(instruction&0x0F00)>>8] = Math.floor(Math.random() * 256) & (instruction&0x00FF);
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0xD000) { // DRW Vx,Vy,n
     // Draw a sprite at Vx,Vy of size nx8 from bytes at [I]
     vx = ( instruction & 0x0F00 ) >> 8;
@@ -935,78 +939,78 @@ function step1() {
     n = instruction & 0x000F;
     for (pixrow=0; pixrow<n; pixrow++) {
       for (c=0; c<8; c++) {
-			// Plain drawing (draw 1 in each location)
-			//if ( mem[I+pixrow] & (0x80 >> c) ) {
-			//  screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = 1;
-			//}
-			// XOR drawing (perform XOR of each pix with memory)
+      // Plain drawing (draw 1 in each location)
+      //if ( mem[I+pixrow] & (0x80 >> c) ) {
+      //  screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = 1;
+      //}
+      // XOR drawing (perform XOR of each pix with memory)
         if ( mem[I+pixrow] & (0x80 >> c) ) {
           bit = 1;
         } else {
           bit = 0;
         }
         pix = ( bit ^ screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] );
-		    screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = pix;
-			}
+        screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = pix;
+      }
     }
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xE09E) { // SKP Vx (Skip Key Vx is Pressed)
     // console.log ( "SKP Vx" );
     window.alert ( "The SKP Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0xE0A1) { // SKNP Vx (Skip Key Vx is Not Pressed)
     // console.log ( "SKNP Vx" );
     window.alert ( "The SKNP Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
-  } else if ( (instruction & 0xF0FF) == 0xF007) { // LD Vx, DT
+    PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF007) { // LD Vx, DT  (Set Vx to current Delay Timer value)
     // console.log ( "LD Vx,DT" );
-    window.alert ( "The LD Vx,DT instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
+    V[(instruction&0x0F00)>>8] = T;
+    PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF00A) { // LD Vx, K
     // console.log ( "LD Vx,K" );
     window.alert ( "The LD Vx,K instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
-  } else if ( (instruction & 0xF0FF) == 0xF015) { // LD DT, Vx
+    PC = PC + 2;
+  } else if ( (instruction & 0xF0FF) == 0xF015) { // LD DT, Vx  (Set Delay Timer value to Vx)
     // console.log ( "LD DT,Vx" );
-    window.alert ( "The LD DT,Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
+    T = V[(instruction&0x0F00)>>8];
+    PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF018) { // LD ST, Vx
     // console.log ( "LD ST,Vx" );
     window.alert ( "The LD ST,Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF01E) { // ADD I, Vx
     // console.log ( "ADD I, Vx" );
     I = I + V[(instruction&0x0F00)>>8];
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF029) { // LD F, Vx
     // console.log ( "LD F,Vx" );
     // It's not clear if the "Vx" should represent:
     //   (a) the 4-bit number corresponding to the digit to be drawn
-    digit = (instruction&0x0F00)>>8;
+    // digit = (instruction&0x0F00)>>8;
     //   (b) the 4-bit register number holding the number of the digit
-    // digit = V[(instruction&0x0F00)>>8];
+    digit = V[(instruction&0x0F00)>>8];
     I = font_addr + (5 * digit); // There are 5 rows per digit
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF033) { // LD B, Vx
     // console.log ( "LD B,Vx" );
     window.alert ( "The LD B,Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF055) { // LD [I], Vx
     // console.log ( "LD [I],Vx" );
     window.alert ( "The LD [I],Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
+    PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF065) { // LD Vx, [I]
     // console.log ( "LD Vx,[I]" );
     window.alert ( "The LD Vx,[I] instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-	  PC = PC + 2;
+    PC = PC + 2;
   } else {
     // console.log ( "UNKNOWN INSTRUCTION: " + hex4(instruction) );
-    window.alert ( "The SYS instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
-	  PC = PC + 2;
+    window.alert ( "This instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not recognized" );
+    PC = PC + 2;
   }
   N = N + 1;
-	update_display();
-	draw_screen();
+  update_display();
+  draw_screen();
 }
 
 var pause_time_ms = 100; // 100
@@ -1018,27 +1022,47 @@ function run1() {
   if (!running) {
     step1();
   } else {
-	  stop_running = true;
+    stop_running = true;
+  }
+}
+
+timer_60Hz = null;
+
+function timer() {
+  // console.log ( "Timer tick" );
+  if (T > 0) {
+    T = T - 1;
   }
 }
 
 function run() {
-  // ST = parseInt ( document.getElementById("ST").value );
-  // CT = parseInt ( document.getElementById("CT").value );
+  // console.log ( "Top of run" );
   if (stop_running == false) {
-		for (stepnum=0; stepnum<ST; stepnum++) {
-		  if (stop_running) {
-				running = false;
-			  update_rs_button();
-		    return ( false );
-		  }
-			step1();
-		}
+    // console.log ( "  stop_running is false" );
+    for (stepnum=0; stepnum<ST; stepnum++) {
+      // console.log ( "    run one step" );
+      if (stop_running) {
+        running = false;
+        update_rs_button();
+        return ( false );
+      }
+      step1();
+    }
+    // console.log ( "  reset the timeout" );
     setTimeout ( "run()", CT ); // pause_time_ms );
+    if (timer_60Hz == null) {
+      timer_60Hz = setInterval ( "timer()", DT );     // 60Hz = 17 = 1000 * 0.0166666666667
+    }
   } else {
-	  running = false;
-	  update_rs_button();
-	}
+    // console.log ( "  stop_running is true" );
+    running = false;
+    update_rs_button();
+    if (timer_60Hz != null) {
+      // console.log ( "    clearing timer_60Hz" );
+      clearInterval ( timer_60Hz );
+      timer_60Hz = null;
+    }
+  }
   return ( false );
 }
 
@@ -1048,6 +1072,7 @@ function stop() {
 function update_variables() {
   ST = parseInt ( document.getElementById("ST").value );
   CT = parseInt ( document.getElementById("CT").value );
+  DT = parseInt ( document.getElementById("DT").value );
 }
 
 function key_press ( k ) {
@@ -1056,46 +1081,46 @@ function key_press ( k ) {
 
 function on_doc_change() {
   // console.log ( "on_doc_change called" );
-	let selector = document.getElementById("show_help");
-	let setting = selector[selector.selectedIndex].value;
-	let n = selector.options.length;
-	for (let i=0; i<n; i++) {
-	  let ith_id = selector.options[i].value;
-	  if (ith_id == setting) {
-	    document.getElementById(ith_id).hidden = false;
-	  } else {
-	    document.getElementById(ith_id).hidden = true;
-	  }
-	}
+  let selector = document.getElementById("show_help");
+  let setting = selector[selector.selectedIndex].value;
+  let n = selector.options.length;
+  for (let i=0; i<n; i++) {
+    let ith_id = selector.options[i].value;
+    if (ith_id == setting) {
+      document.getElementById(ith_id).hidden = false;
+    } else {
+      document.getElementById(ith_id).hidden = true;
+    }
+  }
 }
 
 function on_example_change() {
-	let selector = document.getElementById("example_select");
-	let setting = selector[selector.selectedIndex].value;
+  let selector = document.getElementById("example_select");
+  let setting = selector[selector.selectedIndex].value;
   document.getElementById ( "source" ).value = document.getElementById(setting).innerHTML;
 }
 
 function update_rs_button() {
   if (running) {
-	  document.getElementById('RunStop').innerHTML = "<u>Run</u>/Stop";
-	  document.getElementById('RunStop').setAttribute("style", "background-color: #FF9999;");
+    document.getElementById('RunStop').innerHTML = "<u>Run</u>/Stop";
+    document.getElementById('RunStop').setAttribute("style", "background-color: #FF9999;");
   } else {
-	  document.getElementById('RunStop').innerHTML = "Run/<u>Stop</u>";
-	  document.getElementById('RunStop').setAttribute("style", "background-color: #99FF99;");
+    document.getElementById('RunStop').innerHTML = "Run/<u>Stop</u>";
+    document.getElementById('RunStop').setAttribute("style", "background-color: #99FF99;");
   }
 }
 
 function run_stop_clicked() {
   running = !running;
   if (running) {
-	  stop_running = false;
-	  //document.getElementById('RunStop').innerHTML = "<u>Run</u>/Stop";
-	  //document.getElementById('RunStop').setAttribute("style", "background-color: #FF9999;");
-	  run();
+    stop_running = false;
+    //document.getElementById('RunStop').innerHTML = "<u>Run</u>/Stop";
+    //document.getElementById('RunStop').setAttribute("style", "background-color: #FF9999;");
+    run();
   } else {
-	  stop_running = true;
-	  //document.getElementById('RunStop').innerHTML = "Run/<u>Stop</u>";
-	  //document.getElementById('RunStop').setAttribute("style", "background-color: #99FF99;");
+    stop_running = true;
+    //document.getElementById('RunStop').innerHTML = "Run/<u>Stop</u>";
+    //document.getElementById('RunStop').setAttribute("style", "background-color: #99FF99;");
   }
   update_rs_button();
 }
@@ -1110,13 +1135,91 @@ function step_clicked() {
 
 function reload_and_run() {
   if (running) {
-	  run_stop_clicked();
+    run_stop_clicked();
   }
   reset();
   assemble();
   load();
   reset();
-	run_stop_clicked();
+  run_stop_clicked();
+}
+
+
+// From: https://stackoverflow.com/questions/879152/how-do-i-make-javascript-beep
+
+var snd = new Audio("data:audio/wav;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWg" +
+                    "AI0wWs/ItAAAGDgYtAgAyN+QWaAAihwMWm4G8QQRDiMcCBcH3Cc+CDv/7xA" +
+                    "4Tvh9Rz/y8QADBwMWgQAZG/ILNAARQ4GLTcDeIIIhxGOBAuD7hOfBB3/94g" +
+                    "cJ3w+o5/5eIAIAAAVwWgQAVQ2ORaIQwEMAJiDg95G4nQL7mQVWI6GwRcfsZ" +
+                    "AcsKkJvxgxEjzFUgfHoSQ9Qq7KNwqHwuB13MA4a1q/DmBrHgPcmjiGoh//E" +
+                    "wC5nGPEmS4RcfkVKOhJf+WOgoxJclFz3kgn//dBA+ya1GhurNn8zb//9NNu" +
+                    "tNuhz31f////9vt///z+IdAEAAAK4LQIAKobHItEIYCGAExBwe8jcToF9zI" +
+                    "KrEdDYIuP2MgOWFSE34wYiR5iqQPj0JIeoVdlG4VD4XA67mAcNa1fhzA1jw" +
+                    "HuTRxDUQ//iYBczjHiTJcIuPyKlHQkv/LHQUYkuSi57yQT//uggfZNajQ3V" +
+                    "mz+Zt//+mm3Wm3Q576v////+32///5/EOgAAADVghQAAAAA//uQZAUAB1WI" +
+                    "0PZugAAAAAoQwAAAEk3nRd2qAAAAACiDgAAAAAAABCqEEQRLCgwpBGMlJkI" +
+                    "z8jKhGvj4k6jzRnqasNKIeoh5gI7BJaC1A1AoNBjJgbyApVS4IDlZgDU5WU" +
+                    "AxEKDNmmALHzZp0Fkz1FMTmGFl1FMEyodIavcCAUHDWrKAIA4aa2oCgILEB" +
+                    "upZgHvAhEBcZ6joQBxS76AgccrFlczBvKLC0QI2cBoCFvfTDAo7eoOQInqD" +
+                    "PBtvrDEZBNYN5xwNwxQRfw8ZQ5wQVLvO8OYU+mHvFLlDh05Mdg7BT6YrRPp" +
+                    "CBznMB2r//xKJjyyOh+cImr2/4doscwD6neZjuZR4AgAABYAAAABy1xcdQt" +
+                    "xYBYYZdifkUDgzzXaXn98Z0oi9ILU5mBjFANmRwlVJ3/6jYDAmxaiDG3/6x" +
+                    "jQQCCKkRb/6kg/wW+kSJ5//rLobkLSiKmqP/0ikJuDaSaSf/6JiLYLEYnW/" +
+                    "+kXg1WRVJL/9EmQ1YZIsv/6Qzwy5qk7/+tEU0nkls3/zIUMPKNX/6yZLf+k" +
+                    "FgAfgGyLFAUwY//uQZAUABcd5UiNPVXAAAApAAAAAE0VZQKw9ISAAACgAAA" +
+                    "AAVQIygIElVrFkBS+Jhi+EAuu+lKAkYUEIsmEAEoMeDmCETMvfSHTGkF5RW" +
+                    "H7kz/ESHWPAq/kcCRhqBtMdokPdM7vil7RG98A2sc7zO6ZvTdM7pmOUAZTn" +
+                    "JW+NXxqmd41dqJ6mLTXxrPpnV8avaIf5SvL7pndPvPpndJR9Kuu8fePvuiu" +
+                    "horgWjp7Mf/PRjxcFCPDkW31srioCExivv9lcwKEaHsf/7ow2Fl1T/9RkXg" +
+                    "EhYElAoCLFtMArxwivDJJ+bR1HTKJdlEoTELCIqgEwVGSQ+hIm0NbK8WXcT" +
+                    "EI0UPoa2NbG4y2K00JEWbZavJXkYaqo9CRHS55FcZTjKEk3NKoCYUnSQ0rW" +
+                    "xrZbFKbKIhOKPZe1cJKzZSaQrIyULHDZmV5K4xySsDRKWOruanGtjLJXFEm" +
+                    "waIbDLX0hIPBUQPVFVkQkDoUNfSoDgQGKPekoxeGzA4DUvnn4bxzcZrtJyi" +
+                    "pKfPNy5w+9lnXwgqsiyHNeSVpemw4bWb9psYeq//uQZBoABQt4yMVxYAIAA" +
+                    "AkQoAAAHvYpL5m6AAgAACXDAAAAD59jblTirQe9upFsmZbpMudy7Lz1X1DY" +
+                    "sxOOSWpfPqNX2WqktK0DMvuGwlbNj44TleLPQ+Gsfb+GOWOKJoIrWb3cIMe" +
+                    "eON6lz2umTqMXV8Mj30yWPpjoSa9ujK8SyeJP5y5mOW1D6hvLepeveEAEDo" +
+                    "0mgCRClOEgANv3B9a6fikgUSu/DmAMATrGx7nng5p5iimPNZsfQLYB2sDLI" +
+                    "kzRKZOHGAaUyDcpFBSLG9MCQALgAIgQs2YunOszLSAyQYPVC2YdGGeHD2dT" +
+                    "dJk1pAHGAWDjnkcLKFymS3RQZTInzySoBwMG0QueC3gMsCEYxUqlrcxK6k1" +
+                    "LQQcsmyYeQPdC2YfuGPASCBkcVMQQqpVJshui1tkXQJQV0OXGAZMXSOEEBR" +
+                    "irXbVRQW7ugq7IM7rPWSZyDlM3IuNEkxzCOJ0ny2ThNkyRai1b6ev//3dzN" +
+                    "GzNb//4uAvHT5sURcZCFcuKLhOFs8mLAAEAt4UWAAIABAAAAAB4qbHo0tIj" +
+                    "VkUU//uQZAwABfSFz3ZqQAAAAAngwAAAE1HjMp2qAAAAACZDgAAAD5UkTE1" +
+                    "UgZEUExqYynN1qZvqIOREEFmBcJQkwdxiFtw0qEOkGYfRDifBui9MQg4QAH" +
+                    "AqWtAWHoCxu1Yf4VfWLPIM2mHDFsbQEVGwyqQoQcwnfHeIkNt9YnkiaS1oi" +
+                    "zycqJrx4KOQjahZxWbcZgztj2c49nKmkId44S71j0c8eV9yDK6uPRzx5X18" +
+                    "eDvjvQ6yKo9ZSS6l//8elePK/Lf//IInrOF/FvDoADYAGBMGb7FtErm5MXM" +
+                    "lmPAJQVgWta7Zx2go+8xJ0UiCb8LHHdftWyLJE0QIAIsI+UbXu67dZMjmgD" +
+                    "GCGl1H+vpF4NSDckSIkk7Vd+sxEhBQMRU8j/12UIRhzSaUdQ+rQU5kGeFxm" +
+                    "+hb1oh6pWWmv3uvmReDl0UnvtapVaIzo1jZbf/pD6ElLqSX+rUmOQNpJFa/" +
+                    "r+sa4e/pBlAABoAAAAA3CUgShLdGIxsY7AUABPRrgCABdDuQ5GC7DqPQCgb" +
+                    "bJUAoRSUj+NIEig0YfyWUho1VBBBA//uQZB4ABZx5zfMakeAAAAmwAAAAF5" +
+                    "F3P0w9GtAAACfAAAAAwLhMDmAYWMgVEG1U0FIGCBgXBXAtfMH10000EEEEE" +
+                    "ECUBYln03TTTdNBDZopopYvrTTdNa325mImNg3TTPV9q3pmY0xoO6bv3r00" +
+                    "y+IDGid/9aaaZTGMuj9mpu9Mpio1dXrr5HERTZSmqU36A3CumzN/9Robv/X" +
+                    "x4v9ijkSRSNLQhAWumap82WRSBUqXStV/YcS+XVLnSS+WLDroqArFkMEsAS" +
+                    "+eWmrUzrO0oEmE40RlMZ5+ODIkAyKAGUwZ3mVKmcamcJnMW26MRPgUw6j+L" +
+                    "khyHGVGYjSUUKNpuJUQoOIAyDvEyG8S5yfK6dhZc0Tx1KI/gviKL6qvvFs1" +
+                    "+bWtaz58uUNnryq6kt5RzOCkPWlVqVX2a/EEBUdU1KrXLf40GoiiFXK///q" +
+                    "poiDXrOgqDR38JB0bw7SoL+ZB9o1RCkQjQ2CBYZKd/+VJxZRRZlqSkKiws0" +
+                    "WFxUyCwsKiMy7hUVFhIaCrNQsKkTIsLivwKKigsj8XYlwt/WKi2N4d//uQR" +
+                    "CSAAjURNIHpMZBGYiaQPSYyAAABLAAAAAAAACWAAAAApUF/Mg+0aohSIRob" +
+                    "BAsMlO//Kk4soosy1JSFRYWaLC4qZBYWFRGZdwqKiwkNBVmoWFSJkWFxX4F" +
+                    "FRQWR+LsS4W/rFRb///////////////////////////////////////////" +
+                    "///////////////////////////////////////////////////////////" +
+                    "///////////////////////////////////////////////////////////" +
+                    "///////////////////////////////////////////////////////////" +
+                    "///////////////////////////////////////////////////////////" +
+                    "///////////////////////////////////////////////////////////" +
+                    "///////////////////////////////////////////////////////////" +
+                    "////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                    "AAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" +
+                    "AAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZ" +
+                    "GUAAAAAAAAAACU=");
+
+function beep() {
+  snd.play();
 }
 
 </script>
@@ -1128,247 +1231,247 @@ function reload_and_run() {
 <p/>
 <center>
 <table>
-	<tr>
-	  <!--
-		<td>
-			<select id="assem_opts" onchange="changed_format()">
-			<option value="H" selected>Plain Hex</option>
-			<option value="I">Intel Hex</option>
-			</select>
-		</td>
-		-->
-		<td>
-			<input type="button" name="assem" value="Assemble" onclick="assemble();"></input>
-		</td>
-		<td>
-			<input type="button" name="save" value="Save" onclick="save();"></input>
-		</td>
-		<td>
-			<input type="button" name="restore" value="Restore" onclick="restore();"></input>
-		</td>
-		<td>
-		  &nbsp; &nbsp; &nbsp; &nbsp; 
-		  <input type="button" name="disassem" value="Disassemble as" onclick="disassemble();"></input>
-		</td>
-		<td>
-			<select id="disassem_opts" onchange="changed_format()">
-			<option value="S">Src</option>
-			<option value="LS" selected>L+S</option> -->
-			<option value="HS">H+S</option> -->
-			<option value="LHS">LHS</option> -->
-			</select>
-		</td>
-		<td>
-		  &nbsp; &nbsp; &nbsp; &nbsp;
-			<input type="button" name="load"  value="Load"  onclick="load();"></input>
-			<input type="button" name="reset"  value="Reset"  onclick="reset();"></input>
-		</td>
-		<td>
-		  &nbsp; &nbsp; &nbsp; &nbsp;
-			<input type="button" name="run1" value="Step" onclick="run1();"></input>
-			<!-- <input type="button" name="run"  value="Run"  onclick="run();"></input>
-			<input type="button" name="stop" value="Stop" onclick="stop();"></input> -->
-			&nbsp; &nbsp;
-			<input type="button" name="stop" value="↻" onclick="reload_and_run();" style="background-color: #AAAAFF;"></input>
-			&nbsp; &nbsp;
-			<button type="button" id="RunStop" onclick="run_stop_clicked();" style="background-color: #99FF99;">Run/<u>Stop</u></button>
+  <tr>
+    <!--
+    <td>
+      <select id="assem_opts" onchange="changed_format()">
+      <option value="H" selected>Plain Hex</option>
+      <option value="I">Intel Hex</option>
+      </select>
+    </td>
+    -->
+    <td>
+      <input type="button" name="assem" value="Assemble" onclick="beep(); assemble();"></input>
+    </td>
+    <td>
+      <input type="button" name="save" value="Save" onclick="beep(); save();"></input>
+    </td>
+    <td>
+      <input type="button" name="restore" value="Restore" onclick="beep(); restore();"></input>
+    </td>
+    <td>
+      &nbsp; &nbsp; &nbsp; &nbsp;
+      <input type="button" name="disassem" value="Disassemble as" onclick="beep(); disassemble();"></input>
+    </td>
+    <td>
+      <select id="disassem_opts" onchange="changed_format()">
+      <option value="S">Src</option>
+      <option value="LS" selected>L+S</option> -->
+      <option value="HS">H+S</option> -->
+      <option value="LHS">LHS</option> -->
+      </select>
+    </td>
+    <td>
+      &nbsp; &nbsp; &nbsp; &nbsp;
+      <input type="button" name="load"  value="Load"  onclick="beep(); load();"></input>
+      <input type="button" name="reset"  value="Reset"  onclick="beep(); reset();"></input>
+    </td>
+    <td>
+      &nbsp; &nbsp; &nbsp; &nbsp;
+      <input type="button" name="run1" value="Step" onclick="beep(); run1();"></input>
+      <!-- <input type="button" name="run"  value="Run"  onclick="run();"></input>
+      <input type="button" name="stop" value="Stop" onclick="stop();"></input> -->
+      &nbsp; &nbsp;
+      <input type="button" name="stop" value="↻" onclick="beep(); reload_and_run();" style="background-color: #AAAAFF;"></input>
+      &nbsp; &nbsp;
+      <button type="button" id="RunStop" onclick="run_stop_clicked(); beep();" style="background-color: #99FF99;">Run/<u>Stop</u></button>
 
-		</td>
-	</tr>
+    </td>
+  </tr>
 </table>
 <center>
 <table width="100%" style="padding:10px; border-spacing:2px; border:4px solid black; background-color:#dddddd; text-align:left; font-family: Arial, Helvetica, sans-serif; font-size: 14px;" >
   <colgroup>
-		<col>
-		<col>
+    <col>
+    <col>
   </colgroup>
   <thead>
-		<tr>
-		  <th style="text-align:center; padding:5px; border-spacing:2px; border:2px solid black; background-color:#aaffff;">Source Code</th>
-		  <th style="text-align:center; padding:5px; border-spacing:2px; border:2px solid black; background-color:#aaffff;">Machine Code</th>
-		  <th style="text-align:center; padding:5px; border-spacing:2px; border:2px solid black; background-color:#aaffff;">Chip-8 Virtual Machine</th>
-		</tr>
+    <tr>
+      <th style="text-align:center; padding:5px; border-spacing:2px; border:2px solid black; background-color:#aaffff;">Source Code</th>
+      <th style="text-align:center; padding:5px; border-spacing:2px; border:2px solid black; background-color:#aaffff;">Machine Code</th>
+      <th style="text-align:center; padding:5px; border-spacing:2px; border:2px solid black; background-color:#aaffff;">Chip-8 Virtual Machine</th>
+    </tr>
   </thead>
-	<tbody>
-  	<tr>
-		  <td valign="top">
-				<center>
-				<textarea id="source" rows="27" cols="64"
-				   autocomplete="off" autocorrect="off"
-				   autocapitalize="off" spellcheck="false"></textarea>
-				</center>
-			</td>
+  <tbody>
+    <tr>
+      <td valign="top">
+        <center>
+        <textarea id="source" rows="27" cols="64"
+           autocomplete="off" autocorrect="off"
+           autocapitalize="off" spellcheck="false"></textarea>
+        </center>
+      </td>
 
-		  <td valign="top">
-				<center>
+      <td valign="top">
+        <center>
 
-				<textarea id="machine" rows="27" cols="5"
-				   autocomplete="off" autocorrect="off"
-				   autocapitalize="off" spellcheck="false"></textarea>
-				</center>
-			</td>
+        <textarea id="machine" rows="27" cols="6"
+           autocomplete="off" autocorrect="off"
+           autocapitalize="off" spellcheck="false"></textarea>
+        </center>
+      </td>
 
-		  <td valign="top"> <!-- Start of VIRTUAL MACHINE -->
-		    <center>
-		    <table>
-		    <tr><td>
-				<center>
-					<!--div id="tdiv" style="resize: both; overflow: auto;"--> 
-					<div id="tdiv">
-					<center>
-					<canvas id="drawing_area" width="320" height="160"
-						style="margin:2px; padding:2px; border:2px solid #cccccc; resize: both; overflow: auto;"> 
-						<!-- Use: style="margin:2px; padding:2px; border:2px solid #cccccc; display:none;" -->
-						Your browser does not support the HTML5 canvas tag.
-					</canvas>
-					</center>
-					</div>
-				</center>
-				</td></tr>
-		    <tr><td>
-				<center>
-				<table> <!-- Start of Virtual Machine Controls -->
-					<tr>
-					<!-- Memory Controls -->
-					<td>
-					<center>
-					  <input type="button" name="memup"  value="⇧"  onclick="mem_top = 0x0000; update_display();"></input></br>
-					  <input type="button" name="memup"  value="↟"  onclick="mem_top = Math.max(0,mem_top-1024); update_display();"></input></br>
-					  <input type="button" name="memup"  value="↟"  onclick="mem_top = Math.max(0,mem_top-16); update_display();"></input></br>
-					  <input type="button" name="memup"  value="↑"  onclick="mem_top = Math.max(0,mem_top-2); update_display();"></input></br>
-					  <input type="button" name="memup"  value="⌂"  onclick="mem_top = 0x0200; update_display();"></input></br>
-					  <input type="button" name="memdn"  value="↓"  onclick="mem_top = Math.min(0xffe0,mem_top+2); update_display();"></input></br>
-					  <input type="button" name="memdn"  value="⇓"  onclick="mem_top = Math.min(0xffe0,mem_top+16); update_display();"></input></br>
-					  <input type="button" name="memdn"  value="⇓"  onclick="mem_top = Math.min(0xffe0,mem_top+1024); update_display();"></input></br>
-					  <input type="button" name="memdn"  value="⇩"  onclick="mem_top = 0xffe0; update_display();"></input></br>
-					</center>
-					</td>
-					<!-- Memory table -->
-					<td style="vertical-align: top;">
-						<table class="mem">
-							<tr class="mem"><td class="mem" id="A0"></td><td class="mem"><input type="text" id="M0" class="mem" name="M0" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="A1"></td><td class="mem"><input type="text" id="M1" class="mem" name="M1" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="A2"></td><td class="mem"><input type="text" id="M2" class="mem" name="M2" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="A3"></td><td class="mem"><input type="text" id="M3" class="mem" name="M3" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="A4"></td><td class="mem"><input type="text" id="M4" class="mem" name="M4" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="A5"></td><td class="mem"><input type="text" id="M5" class="mem" name="M5" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="A6"></td><td class="mem"><input type="text" id="M6" class="mem" name="M6" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="A7"></td><td class="mem"><input type="text" id="M7" class="mem" name="M7" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="A8"></td><td class="mem"><input type="text" id="M8" class="mem" name="M8" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="A9"></td><td class="mem"><input type="text" id="M9" class="mem" name="M9" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="AA"></td><td class="mem"><input type="text" id="MA" class="mem" name="MA" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="AB"></td><td class="mem"><input type="text" id="MB" class="mem" name="MB" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="AC"></td><td class="mem"><input type="text" id="MC" class="mem" name="MC" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="AD"></td><td class="mem"><input type="text" id="MD" class="mem" name="MD" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="AE"></td><td class="mem"><input type="text" id="ME" class="mem" name="ME" size="4"></td></tr>
-							<tr class="mem"><td class="mem" id="AF"></td><td class="mem"><input type="text" id="MF" class="mem" name="MF" size="4"></td></tr>
-						</table>
-					</td>
-					<!-- Register table -->
-					<td style="vertical-align: top;">
-						<table class="reg">
-							<tr class="reg"><td class="reg">V0</td><td class="reg"><input type="text" id="V0" class="reg" name="V0" size="2"></td></tr>
-							<tr class="reg"><td class="reg">V1</td><td class="reg"><input type="text" id="V1" class="reg" name="V1" size="2"></td></tr>
-							<tr class="reg"><td class="reg">V2</td><td class="reg"><input type="text" id="V2" class="reg" name="V2" size="2"></td></tr>
-							<tr class="reg"><td class="reg">V3</td><td class="reg"><input type="text" id="V3" class="reg" name="V3" size="2"></td></tr>
-							<tr class="reg"><td class="reg">V4</td><td class="reg"><input type="text" id="V4" class="reg" name="V4" size="2"></td></tr>
-							<tr class="reg"><td class="reg">V5</td><td class="reg"><input type="text" id="V5" class="reg" name="V5" size="2"></td></tr>
-							<tr class="reg"><td class="reg">V6</td><td class="reg"><input type="text" id="V6" class="reg" name="V6" size="2"></td></tr>
-							<tr class="reg"><td class="reg">V7</td><td class="reg"><input type="text" id="V7" class="reg" name="V7" size="2"></td></tr>
-							<tr class="reg"><td class="reg">V8</td><td class="reg"><input type="text" id="V8" class="reg" name="V8" size="2"></td></tr>
-							<tr class="reg"><td class="reg">V9</td><td class="reg"><input type="text" id="V9" class="reg" name="V9" size="2"></td></tr>
-							<tr class="reg"><td class="reg">VA</td><td class="reg"><input type="text" id="VA" class="reg" name="VA" size="2"></td></tr>
-							<tr class="reg"><td class="reg">VB</td><td class="reg"><input type="text" id="VB" class="reg" name="VB" size="2"></td></tr>
-							<tr class="reg"><td class="reg">VC</td><td class="reg"><input type="text" id="VC" class="reg" name="VC" size="2"></td></tr>
-							<tr class="reg"><td class="reg">VD</td><td class="reg"><input type="text" id="VD" class="reg" name="VD" size="2"></td></tr>
-							<tr class="reg"><td class="reg">VE</td><td class="reg"><input type="text" id="VE" class="reg" name="VE" size="2"></td></tr>
-							<tr class="reg"><td class="reg">VF</td><td class="reg"><input type="text" id="VF" class="reg" name="VF" size="2"></td></tr>
-						</table>
-					</td>
-					<!-- PC and [I] table -->
-					<td style="vertical-align: top;">
-						<table>
-							<tr>
-								<td>
-									<table class="reg">
-										<tr class="reg"><td class="reg">PC</td><td class="reg"><input type="text" id="PC" class="reg" name="PC" size="4"></td></tr>
-									</table>
-								</td>
-								<td>
-									<table class="reg">
-										<tr class="reg"><td class="reg"><input type="text" id="PCINST" class="regleft" name="PCINST" size="12"></td></tr>
-									</table>
-								</td>
-							</tr>
-							<tr>
-								<td>
-									<table class="reg">
-										<tr class="reg"><td class="reg">SP</td><td class="reg"><input type="text" id="SP" class="reg" name="SP" size="4"></td></tr>
-									</table>
-								</td>
-								<td>
-									<table class="reg">
-										<tr class="reg"><td class="reg">ST</td><td class="reg"><input type="text" id="ST" class="reg" name="ST" size="9"></td></tr>
-									</table>
-								</td>
-							</tr>
-							<tr>
-								<td>
-									<table class="reg">
-										<tr class="reg"><td class="reg">[ I ]</td><td class="reg"><input type="text" id="[I]" class="reg" name="[I]" size="4"></td></tr>
-									</table>
-								</td>
-								<td>
-									<table class="reg">
-										<tr class="reg"><td class="reg">CT</td><td class="reg"><input type="text" id="CT" class="reg" name="CT" size="9"></td></tr>
-									</table>
-								</td>
-							</tr>
-							<tr>
-								<td>
-									<table class="reg">
-										<tr class="reg"><td class="reg">??</td><td class="reg">????</td></tr>
-									</table>
-								</td>
-								<td>
-									<table class="reg">
-										<tr class="reg"><td class="reg">&nbsp;N&nbsp;</td><td class="reg"><input type="text" id="N" class="reg" name="N" size="9" readonly></td></tr>
-									</table>
-								</td>
-							</tr>
-						</table>
-						<center>
-						<table>
-						  <tr><td>&nbsp;</td></tr>
-						  <tr><td><input type="button" value="0" onclick="key_press('0');"></td>
-									 <td><input type="button" value="1" onclick="key_press('1');"></td>
-										<td><input type="button" value="2" onclick="key_press('2');"></td>
-										 <td><input type="button" value="3" onclick="key_press('3');"></td> </tr>
-						  <tr><td><input type="button" value="4" onclick="key_press('4');"></td>
-									 <td><input type="button" value="5" onclick="key_press('5');"></td>
-										<td><input type="button" value="6" onclick="key_press('6');"></td>
-										 <td><input type="button" value="7" onclick="key_press('7');"></td> </tr>
-						  <tr><td><input type="button" value="8" onclick="key_press('8');"></td>
-									 <td><input type="button" value="9" onclick="key_press('9');"></td>
-										<td><input type="button" value="A" onclick="key_press('A');"></td>
-										 <td><input type="button" value="B" onclick="key_press('B');"></td> </tr>
-						  <tr><td><input type="button" value="C" onclick="key_press('C');"></td>
-									 <td><input type="button" value="D" onclick="key_press('D');"></td>
-										<td><input type="button" value="E" onclick="key_press('E');"></td>
-										 <td><input type="button" value="F" onclick="key_press('F');"></td> </tr>
-						</table>
-						</center>
-					</td>
-					</tr>
-				</table> <!-- End of Virtual Machine Controls -->
-				</center>
-				</td></tr>
-				</table>
-		    </center>
-			</td>  <!-- End of VIRTUAL MACHINE -->
+      <td valign="top"> <!-- Start of VIRTUAL MACHINE -->
+        <center>
+        <table>
+        <tr><td>
+        <center>
+          <!--div id="tdiv" style="resize: both; overflow: auto;"--> 
+          <div id="tdiv">
+          <center>
+          <canvas id="drawing_area" width="320" height="160"
+            style="margin:2px; padding:2px; border:2px solid #cccccc; resize: both; overflow: auto;"> 
+            <!-- Use: style="margin:2px; padding:2px; border:2px solid #cccccc; display:none;" -->
+            Your browser does not support the HTML5 canvas tag.
+          </canvas>
+          </center>
+          </div>
+        </center>
+        </td></tr>
+        <tr><td>
+        <center>
+        <table> <!-- Start of Virtual Machine Controls -->
+          <tr>
+          <!-- Memory Controls -->
+          <td>
+          <center>
+            <input type="button" name="memup"  value="⇧"  onclick="beep(); mem_top = 0x0000; update_display();"></input></br>
+            <input type="button" name="memup"  value="↟"  onclick="beep(); mem_top = Math.max(0,mem_top-1024); update_display();"></input></br>
+            <input type="button" name="memup"  value="↟"  onclick="beep(); mem_top = Math.max(0,mem_top-16); update_display();"></input></br>
+            <input type="button" name="memup"  value="↑"  onclick="beep(); mem_top = Math.max(0,mem_top-2); update_display();"></input></br>
+            <input type="button" name="memup"  value="⌂"  onclick="beep(); mem_top = 0x0200; update_display();"></input></br>
+            <input type="button" name="memdn"  value="↓"  onclick="beep(); mem_top = Math.min(0xffe0,mem_top+2); update_display();"></input></br>
+            <input type="button" name="memdn"  value="⇓"  onclick="beep(); mem_top = Math.min(0xffe0,mem_top+16); update_display();"></input></br>
+            <input type="button" name="memdn"  value="⇓"  onclick="beep(); mem_top = Math.min(0xffe0,mem_top+1024); update_display();"></input></br>
+            <input type="button" name="memdn"  value="⇩"  onclick="beep(); mem_top = 0xffe0; update_display();"></input></br>
+          </center>
+          </td>
+          <!-- Memory table -->
+          <td style="vertical-align: top;">
+            <table class="mem">
+              <tr class="mem"><td class="mem" id="A0"></td><td class="mem"><input type="text" id="M0" class="mem" name="M0" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="A1"></td><td class="mem"><input type="text" id="M1" class="mem" name="M1" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="A2"></td><td class="mem"><input type="text" id="M2" class="mem" name="M2" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="A3"></td><td class="mem"><input type="text" id="M3" class="mem" name="M3" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="A4"></td><td class="mem"><input type="text" id="M4" class="mem" name="M4" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="A5"></td><td class="mem"><input type="text" id="M5" class="mem" name="M5" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="A6"></td><td class="mem"><input type="text" id="M6" class="mem" name="M6" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="A7"></td><td class="mem"><input type="text" id="M7" class="mem" name="M7" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="A8"></td><td class="mem"><input type="text" id="M8" class="mem" name="M8" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="A9"></td><td class="mem"><input type="text" id="M9" class="mem" name="M9" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="AA"></td><td class="mem"><input type="text" id="MA" class="mem" name="MA" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="AB"></td><td class="mem"><input type="text" id="MB" class="mem" name="MB" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="AC"></td><td class="mem"><input type="text" id="MC" class="mem" name="MC" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="AD"></td><td class="mem"><input type="text" id="MD" class="mem" name="MD" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="AE"></td><td class="mem"><input type="text" id="ME" class="mem" name="ME" size="4"></td></tr>
+              <tr class="mem"><td class="mem" id="AF"></td><td class="mem"><input type="text" id="MF" class="mem" name="MF" size="4"></td></tr>
+            </table>
+          </td>
+          <!-- Register table -->
+          <td style="vertical-align: top;">
+            <table class="reg">
+              <tr class="reg"><td class="reg">V0</td><td class="reg"><input type="text" id="V0" class="reg" name="V0" size="2"></td></tr>
+              <tr class="reg"><td class="reg">V1</td><td class="reg"><input type="text" id="V1" class="reg" name="V1" size="2"></td></tr>
+              <tr class="reg"><td class="reg">V2</td><td class="reg"><input type="text" id="V2" class="reg" name="V2" size="2"></td></tr>
+              <tr class="reg"><td class="reg">V3</td><td class="reg"><input type="text" id="V3" class="reg" name="V3" size="2"></td></tr>
+              <tr class="reg"><td class="reg">V4</td><td class="reg"><input type="text" id="V4" class="reg" name="V4" size="2"></td></tr>
+              <tr class="reg"><td class="reg">V5</td><td class="reg"><input type="text" id="V5" class="reg" name="V5" size="2"></td></tr>
+              <tr class="reg"><td class="reg">V6</td><td class="reg"><input type="text" id="V6" class="reg" name="V6" size="2"></td></tr>
+              <tr class="reg"><td class="reg">V7</td><td class="reg"><input type="text" id="V7" class="reg" name="V7" size="2"></td></tr>
+              <tr class="reg"><td class="reg">V8</td><td class="reg"><input type="text" id="V8" class="reg" name="V8" size="2"></td></tr>
+              <tr class="reg"><td class="reg">V9</td><td class="reg"><input type="text" id="V9" class="reg" name="V9" size="2"></td></tr>
+              <tr class="reg"><td class="reg">VA</td><td class="reg"><input type="text" id="VA" class="reg" name="VA" size="2"></td></tr>
+              <tr class="reg"><td class="reg">VB</td><td class="reg"><input type="text" id="VB" class="reg" name="VB" size="2"></td></tr>
+              <tr class="reg"><td class="reg">VC</td><td class="reg"><input type="text" id="VC" class="reg" name="VC" size="2"></td></tr>
+              <tr class="reg"><td class="reg">VD</td><td class="reg"><input type="text" id="VD" class="reg" name="VD" size="2"></td></tr>
+              <tr class="reg"><td class="reg">VE</td><td class="reg"><input type="text" id="VE" class="reg" name="VE" size="2"></td></tr>
+              <tr class="reg"><td class="reg">VF</td><td class="reg"><input type="text" id="VF" class="reg" name="VF" size="2"></td></tr>
+            </table>
+          </td>
+          <!-- PC and [I] table -->
+          <td style="vertical-align: top;">
+            <table>
+              <tr>
+                <td>
+                  <table class="reg">
+                    <tr class="reg"><td class="reg">PC</td><td class="reg"><input type="text" id="PC" class="reg" name="PC" size="4"></td></tr>
+                  </table>
+                </td>
+                <td>
+                  <table class="reg">
+                    <tr class="reg"><td class="reg"><input type="text" id="PCINST" class="regleft" name="PCINST" size="12"></td></tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <table class="reg">
+                    <tr class="reg"><td class="reg">SP</td><td class="reg"><input type="text" id="SP" class="reg" name="SP" size="4"></td></tr>
+                  </table>
+                </td>
+                <td>
+                  <table class="reg">
+                    <tr class="reg"><td class="reg">&nbsp;N&nbsp;</td><td class="reg"><input type="text" id="N" class="reg" name="N" size="9" readonly></td></tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <table class="reg">
+                    <tr class="reg"><td class="reg">[ I ]</td><td class="reg"><input type="text" id="[I]" class="reg" name="[I]" size="4"></td></tr>
+                  </table>
+                </td>
+                <td>
+                  <table class="reg">
+                    <tr class="reg"><td class="reg">ST</td><td class="reg"><input type="text" id="ST" class="reg" name="ST" size="9"></td></tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <table class="reg">
+                    <tr class="reg"><td class="reg">DT</td><td class="reg"><input type="text" id="DT" class="reg" name="DT" size="4"></td></tr>
+                  </table>
+                </td>
+                <td>
+                  <table class="reg">
+                    <tr class="reg"><td class="reg">CT</td><td class="reg"><input type="text" id="CT" class="reg" name="CT" size="9"></td></tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+            <center>
+            <table>
+              <tr><td>&nbsp;</td></tr>
+              <tr><td><input type="button" value="0" onclick="beep(); key_press('0');"></td>
+                   <td><input type="button" value="1" onclick="beep(); key_press('1');"></td>
+                    <td><input type="button" value="2" onclick="beep(); key_press('2');"></td>
+                     <td><input type="button" value="3" onclick="beep(); key_press('3');"></td> </tr>
+              <tr><td><input type="button" value="4" onclick="beep(); key_press('4');"></td>
+                   <td><input type="button" value="5" onclick="beep(); key_press('5');"></td>
+                    <td><input type="button" value="6" onclick="beep(); key_press('6');"></td>
+                     <td><input type="button" value="7" onclick="beep(); key_press('7');"></td> </tr>
+              <tr><td><input type="button" value="8" onclick="beep(); key_press('8');"></td>
+                   <td><input type="button" value="9" onclick="beep(); key_press('9');"></td>
+                    <td><input type="button" value="A" onclick="beep(); key_press('A');"></td>
+                     <td><input type="button" value="B" onclick="beep(); key_press('B');"></td> </tr>
+              <tr><td><input type="button" value="C" onclick="beep(); key_press('C');"></td>
+                   <td><input type="button" value="D" onclick="beep(); key_press('D');"></td>
+                    <td><input type="button" value="E" onclick="beep(); key_press('E');"></td>
+                     <td><input type="button" value="F" onclick="beep(); key_press('F');"></td> </tr>
+            </table>
+            </center>
+          </td>
+          </tr>
+        </table> <!-- End of Virtual Machine Controls -->
+        </center>
+        </td></tr>
+        </table>
+        </center>
+      </td>  <!-- End of VIRTUAL MACHINE -->
 
-		</tr>
-	</tbody>
+    </tr>
+  </tbody>
 </table>
 
 <p/><hr/><p/>
@@ -1379,7 +1482,7 @@ function reload_and_run() {
 <option value="none" selected>-- Select --</option>
 </select>
 <!-- <button type="button" onclick="on_example_change();">Load</button> -->
-<input type="button" name="run"  value="Run"  onclick="reload_and_run();"></input>
+<input type="button" name="run"  value="Run"  onclick="beep(); reload_and_run();"></input>
 
  &nbsp; &nbsp; &nbsp; <b>Documentation:</b>
 <select id="show_help" onchange="on_doc_change()">
@@ -1389,7 +1492,7 @@ function reload_and_run() {
 <option value="hex_to_binary">Hex to Binary</option>
 <option value="examples">Examples</option>
 </select>
-<button type="button" onclick="on_doc_change();">Show</button>
+<button type="button" onclick="beep(); on_doc_change();">Show</button>
 
 
 <p/><hr/><p/>
@@ -1521,15 +1624,15 @@ Cxkk - RND Vx, byte       &#x2705; Rand: Set Vx to a random number (0 to 255) AN
 Dxyn - DRW Vx, Vy, n      &#x2705; Draw: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
 Ex9E - SKP Vx             &#x274C; Skip if Key[Vx]: Skip next instruction if key with the value of Vx is pressed.
 ExA1 - SKNP Vx            &#x274C; Skip if !Key[Vx]: Skip next instruction if key with the value of Vx is not pressed.
-Fx07 - LD Vx, DT          &#x274C; Load Vx from Delay Timer: Set Vx = delay timer value.
+Fx07 - LD Vx, DT          &#x2705; Load Vx from Delay Timer: Set Vx = delay timer value.
 Fx0A - LD Vx, K           &#x274C; Load Vx from next Key: Wait for a key press, store the value of the key in Vx.
-Fx15 - LD DT, Vx          &#x274C; Load Delay Timer from Vx: Set delay timer = Vx.
+Fx15 - LD DT, Vx          &#x2705; Load Delay Timer from Vx: Set delay timer = Vx.
 Fx18 - LD ST, Vx          &#x274C; Load Sound Timer from Vx: Set sound timer = Vx.
 Fx1E - ADD I, Vx          &#x2705; Add Vx to I: Set I = I + Vx.
 Fx29 - LD F, Vx           &#x2705; Load I from Sprite location: Set I = location of sprite for digit Vx.
 Fx33 - LD B, Vx           &#x274C; Load BCD from X into Memory[I]: Store BCD representation of Vx in memory locations I, I+1, and I+2.
 Fx55 - LD [I], Vx         &#x274C; Save Registers: Store registers V0 through Vx in memory starting at location I.
-Fx65 - LD Vx, [I]         &#x274C; Restore Register: Read registers V0 through Vx from memory starting at location I.
+Fx65 - LD Vx, [I]         &#x274C; Restore Registers: Read registers V0 through Vx from memory starting at location I.
 </pre>
 </tt>
 </td></tr></table>
@@ -1970,13 +2073,14 @@ TOP:    CLS
         ; TEST the 16 numeric sprites with 2 loops
 
         LD VA,05     ; Amount to increment I (size of glyphs)
-        LD F,V0      ; Puts address of '0' in I
+        LD V3,00     ; Load V3 with the value of '0'
+        LD F,V3      ; Puts address of '0' (value of V3) in I
         LD V5,08     ; Starting Row to draw (Y)
         LD V4,0C     ; Starting Col to draw (X)
         LD VC,00     ; Loop counter
 
 NLoop1: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-				ADD V4,05    ; Move right by 5
+        ADD V4,05    ; Move right by 5
         ADD I,VA     ; Move I to the next glyph
         ADD VC,01    ; Increment the Loop counter
         SE  VC,08    ; Skip branch when counter == 8
@@ -1988,7 +2092,7 @@ NLoop1: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
         LD VC,00     ; Loop counter
 
 NLoop2: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-				ADD V4,05    ; Move right by 5
+        ADD V4,05    ; Move right by 5
         ADD I,VA     ; Move I to the next glyph
         ADD VC,01    ; Increment the Loop counter
         SE  VC,08    ; Skip branch when counter == 8
@@ -1996,7 +2100,6 @@ NLoop2: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
 
 END:    JP END       ; Stay here ... forever
 </pre></td></tr>
-
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="CHIP-8 Test Suite">
 ;===========================;
@@ -2036,13 +2139,14 @@ TOP:    LD V0,01     ; Load x
         ; TEST the 16 numeric sprites with 2 loops
 
         LD VA,05     ; Amount to increment I (size of glyphs)
-        LD F,V0      ; Puts address of '0' in I
+        LD V3,00     ; Load V3 with the value of '0'
+        LD F,V3      ; Puts address of '0' (value of V3) in I
         LD V5,0A     ; Starting Row to draw (Y)
         LD V4,0C     ; Starting Col to draw (X)
         LD VC,00     ; Loop counter
 
 NLoop1: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-				ADD V4,05    ; Move right by 5
+        ADD V4,05    ; Move right by 5
         ADD I,VA     ; Move I to the next glyph
         ADD VC,01    ; Increment the Loop counter
         SE  VC,08    ; Skip branch when counter == 8
@@ -2054,7 +2158,7 @@ NLoop1: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
         LD VC,00     ; Loop counter
 
 NLoop2: DRW V4,V5,5  ; Draw at (V0,V1) 5 rows
-				ADD V4,05    ; Move right by 5
+        ADD V4,05    ; Move right by 5
         ADD I,VA     ; Move I to the next glyph
         ADD VC,01    ; Increment the Loop counter
         SE  VC,08    ; Skip branch when counter == 8
@@ -2183,6 +2287,47 @@ JPOK:   LD V0,55
         SE  V5,4E    ; 01001110 = 4E
         CLS
 
+        ; TEST the Delay timer by drawing digits
+
+        LD V4,04     ; Set value for x
+        LD V5,04     ; Set value for y
+
+        LD V8,00     ; Index of each digit to display
+        LD V9,01     ; Amount to increase each time
+
+NEXTD:  CLS
+        LD V3,V8     ; Load V3 with the next index value
+        LD F,V3      ; Puts address of character in I
+        DRW V4,V5,5  ; Draw at (V0,V1) 5 rows should show "1"
+
+        LD V6,1E     ; Load ticks of 60Hz timer in V6 (3C=60,1E=30)
+        LD DT,V6     ; Load the timer ticks from V6 into DT
+TLoopN: LD V7,DT     ; Get the the timer value in V7
+        SE V7,00     ; Skip branch when V7(timer) == 0
+        JP TLoopN    ; Jump back until timer is 0
+        ADD V8,V9    ; Increment V8 for next character
+        SE V8,10     ; Skip when V8 = 16 (10x)
+        JP NEXTD
+
+        ; Draw DONE
+
+        CLS
+        LD V2,06
+        LD V0,14
+        LD V1,0C
+        LD I,DONE_D
+        DRW V0,V1,5
+        ADD V0,V2
+        LD I,DONE_O
+        DRW V0,V1,5
+        ADD V0,V2
+        LD I,DONE_N
+        DRW V0,V1,5
+        ADD V0,V2
+        LD I,DONE_E
+        DRW V0,V1,5
+        ADD V0,V2
+
 
 END:    JP END       ; Stay here ... forever
 
@@ -2194,6 +2339,19 @@ BX:     DATA FF81    ; Image data FF is top, 81 is sides
         DATA 8181    ; Image data 81 is sides
         DATA 8181    ; Image data 81 is sides
         DATA 81FF    ; Image data 81 is sides, FF is bottom
+
+DONE_D: DATA E090
+        DATA 9090
+        DATA E000
+DONE_O: DATA F090
+        DATA 9090
+        DATA F000
+DONE_N: DATA 90D0
+        DATA F0B0
+        DATA 9000
+DONE_E: DATA F080
+        DATA E080
+        DATA F000
 </pre></td></tr>
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Tetris">
