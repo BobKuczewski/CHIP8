@@ -246,7 +246,7 @@ function load_menus() {
 }
 
 function load_example() {
-  document.getElementById ( "source" ).value = document.getElementById("CHIP-8 Test Suite").innerHTML;
+  document.getElementById ( "source" ).value = document.getElementById("Joe's COSMAC COOL").innerHTML;
 }
 
 function onload() {
@@ -937,21 +937,41 @@ function step1() {
     vx = ( instruction & 0x0F00 ) >> 8;
     vy = ( instruction & 0x00F0 ) >> 4;
     n = instruction & 0x000F;
+    pix_unset = false;
     for (pixrow=0; pixrow<n; pixrow++) {
       for (c=0; c<8; c++) {
-      // Plain drawing (draw 1 in each location)
-      //if ( mem[I+pixrow] & (0x80 >> c) ) {
-      //  screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = 1;
-      //}
-      // XOR drawing (perform XOR of each pix with memory)
+        // Plain drawing (draw 1 in each location)
+        //if ( mem[I+pixrow] & (0x80 >> c) ) {
+        //  screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = 1;
+        //}
+        // XOR drawing (perform XOR of each pix with memory)
         if ( mem[I+pixrow] & (0x80 >> c) ) {
           bit = 1;
         } else {
           bit = 0;
         }
-        pix = ( bit ^ screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] );
-        screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = pix;
+        pix = screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols];
+        new_pix = ( bit ^ pix );
+        screen[(V[vy]+pixrow)%num_rows][(V[vx]+c)%num_cols] = new_pix;
+        // From Mikolay:
+        //   Set VF to 01 if any set pixels are changed to unset, and 00 otherwise
+        //   If a pixel on the screen is set to 01,
+        //   and the sprite to be drawn contains a 01 for this same pixel,
+        //   the screen pixel is turned off and VF is set to 01.
+        //   If the sprite is simply drawn on the screen
+        //   without drawing over any pixels set to 01, VF is set to 00.
+        // From Winter:
+        //   When one or more pixels are erased while a sprite is drawn,
+        //   the VF register is set to 01, otherwise 00.
+        if ((pix !=0) && (new_pix == 0)) {
+          pix_unset = true;
+        }
       }
+    }
+    if (pix_unset) {
+      V[0xF] = 1;
+    } else {
+      V[0xF] = 0;
     }
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xE09E) { // SKP Vx (Skip Key Vx is Pressed)
@@ -1950,6 +1970,197 @@ BX:  DATA FF81    ; Image data FF is top, 81 is sides
      DATA 81FF    ; Image data 81 is sides, FF is bottom
 </pre></td></tr>
 
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Joe's COSMAC COOL">
+;============================;
+; Draw Joe's COSMAC ELF COOL ;
+;============================;
+; Registers:                 ;
+;   V0 used for x            ;
+;   V1 used for y            ;
+;============================;
+
+       LD I,IMG     ; Load first sprite address
+       LD VA,08     ; Load size of each sprite
+       LD V0,00     ; Initial x
+       LD V1,00     ; Initial y
+
+       LD V1,00     ; Load y
+NEWR:  LD V0,00     ; Load x
+DCOL:  CALL BOX     ; Call the Box Subroutine
+       ADD I,VA     ; Move to next sprite
+       ADD V0,VA    ; Move to next column
+       SE V0,40     ; Check for end of row
+       JP DCOL      ; Draw the next column
+       ADD V1,VA    ; Move to next row
+       SE V1,20     ; Check for end of rows
+       JP NEWR      ; Start a new row
+
+END:   JP END       ; Stay here ... forever
+
+BOX:   DRW V0,V1,8  ; Draw at (V0,V1) 8 rows
+       RET
+
+IMG:  DATA ff88
+      DATA baba
+      DATA ba88
+      DATA ffff
+
+      DATA ff8b
+      DATA b988
+      DATA ea8b
+      DATA ffff
+
+      DATA ffa2
+      DATA 2a22
+      DATA aaaa
+      DATA ffff
+
+      DATA ff3f
+      DATA ffff
+      DATA ff38
+      DATA e7df
+
+      DATA ffff
+      DATA ffff
+      DATA 13e0
+      DATA c0c1
+
+      DATA fffe
+      DATA 9dfb
+      DATA e71f
+      DATA 03c0
+
+      DATA ff0f
+      DATA f37d
+      DATA beff
+      DATA ffff
+
+      DATA ffff
+      DATA ffff
+      DATA ff7f
+      DATA 7fbf
+
+      DATA 8282
+      DATA 9e9e
+      DATA 8686
+      DATA 9e9e
+
+      DATA 7878
+      DATA 7979
+      DATA 7878
+      DATA 7979
+
+      DATA 3f3f
+      DATA fffe
+      DATA 7e7e
+      DATA fdfd
+
+      DATA bf7f
+      DATA 7fff
+      DATA fffe
+      DATA feff
+
+      DATA c1e3
+      DATA ffff
+      DATA 0f07
+      DATA 070f
+
+      DATA 8083
+      DATA 83c7
+      DATA ffff
+      DATA ffff
+
+      DATA 3f87
+      DATA f1fc
+      DATA ffff
+      DATA fcd8
+
+      DATA bfbf
+      DATA df5f
+      DATA 0f27
+      DATA 272f
+
+      DATA 8282
+      DATA ffff
+      DATA c782
+      DATA 9292
+
+      DATA 0909
+      DATA ffff
+      DATA 1c08
+      DATA 4949
+
+      DATA fdfe
+      DATA feff
+      DATA 6727
+      DATA 2727
+
+      DATA ffff
+      DATA ff77
+      DATA b7db
+      DATA e3fc
+
+      DATA ffff
+      DATA ffff
+      DATA ffff
+      DATA ff30
+
+      DATA ffff
+      DATA ffdf
+      DATA cebe
+      DATA 3dfd
+
+      DATA b0a0
+      DATA 6040
+      DATA c080
+      DATA 8001
+
+      DATA 2f2f
+      DATA 2f6f
+      DATA 5fdf
+      DATA bfbf
+
+      DATA 9e9e
+      DATA 9e9e
+      DATA 9282
+      DATA c7ff
+
+      DATA 4949
+      DATA 4949
+      DATA 4908
+      DATA 1cff
+
+      DATA 2727
+      DATA 2727
+      DATA 2720
+      DATA 60ff
+
+      DATA ffff
+      DATA ffff
+      DATA ffff
+      DATA ffff
+
+      DATA 8ff7
+      DATA fbe0
+      DATA dfe0
+      DATA 9f3f
+
+      DATA f1ee
+      DATA de3f
+      DATA df3f
+      DATA 7fbf
+
+      DATA 0386
+      DATA dd73
+      DATA 8fff
+      DATA ffff
+
+      DATA 7fff
+      DATA ffff
+      DATA ffff
+      DATA ffff
+</pre></td></tr>
+
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Draw large box">
 ;================================;
 ; Generate a large box in CHIP-8 ;
@@ -2312,21 +2523,20 @@ TLoopN: LD V7,DT     ; Get the the timer value in V7
         ; Draw DONE
 
         CLS
-        LD V2,06
-        LD V0,14
-        LD V1,0C
-        LD I,DONE_D
-        DRW V0,V1,5
-        ADD V0,V2
-        LD I,DONE_O
-        DRW V0,V1,5
-        ADD V0,V2
-        LD I,DONE_N
-        DRW V0,V1,5
-        ADD V0,V2
-        LD I,DONE_E
-        DRW V0,V1,5
-        ADD V0,V2
+        LD V2,06     ; Character width (including space)
+        LD V0,14     ; Starting x
+        LD V1,0C     ; Starting y
+        LD I,DONE_D  ; Load address of D
+        DRW V0,V1,5  ; Draw the D
+        ADD V0,V2    ; Move x to next position
+        LD I,DONE_O  ; Load address of O
+        DRW V0,V1,5  ; Draw the O
+        ADD V0,V2    ; Move x to next position
+        LD I,DONE_N  ; Load address of N
+        DRW V0,V1,5  ; Draw the N
+        ADD V0,V2    ; Move x to next position
+        LD I,DONE_E  ; Load address of E!
+        DRW V0,V1,5  ; Draw the E!
 
 
 END:    JP END       ; Stay here ... forever
@@ -2340,18 +2550,18 @@ BX:     DATA FF81    ; Image data FF is top, 81 is sides
         DATA 8181    ; Image data 81 is sides
         DATA 81FF    ; Image data 81 is sides, FF is bottom
 
-DONE_D: DATA E090
+DONE_D: DATA E090  ; D
         DATA 9090
         DATA E000
-DONE_O: DATA F090
+DONE_O: DATA F090  ; O
         DATA 9090
         DATA F000
-DONE_N: DATA 90D0
+DONE_N: DATA 90D0  ; N
         DATA F0B0
         DATA 9000
-DONE_E: DATA F080
-        DATA E080
-        DATA F000
+DONE_E: DATA F282  ; E!
+        DATA E280
+        DATA F200
 </pre></td></tr>
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Tetris">
