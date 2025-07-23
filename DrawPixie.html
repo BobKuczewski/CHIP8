@@ -163,6 +163,28 @@ function update_code() {
     r++;
   }
   document.getElementById("HexCSV").value = csv_string;
+
+  // Update the CHIP-8 Sprite blocks (8x8) from the drawing board
+  num_rows = board.length;
+  num_cols = board[0].length;
+  chip8_string = "";
+  for (ch8row=0; ch8row<num_rows/8; ch8row++) {    // Normally 8
+    for (ch8col=0; ch8col<num_cols/8; ch8col++) {  // Normally 4
+      console.log ( "Building block (" + ch8row + "," + ch8col + ")" );
+      b = 0;
+      for (sr=0; sr<8; sr++) {
+        for (sc=0; sc<8; sc++) {
+          b = (b << 1) | board[(8*ch8row)+sr][(8*ch8col)+sc];
+        }
+        if ((sr%2) != 0) {
+          chip8_string += ("0000"+b.toString(16)).slice(-4) + "\n";
+          b = 0;
+        }
+      }
+      chip8_string += "\n";
+    }
+  }
+  document.getElementById("Chip8Sprite").value = chip8_string;
 }
 
 function update_from_binary() {
@@ -253,6 +275,10 @@ Binary CSV representation of Drawing<br/>
 <hr/>
 Hex CSV representation of Drawing<br/>
 <textarea id="HexCSV" rows="8" cols="130">
+</textarea>
+<hr/>
+Hex CHIP-8 Sprite representation of Drawing<br/>
+<textarea id="Chip8Sprite" rows="8" cols="130">
 </textarea>
 
 <hr/>
