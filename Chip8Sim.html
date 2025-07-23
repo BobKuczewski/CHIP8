@@ -1040,7 +1040,9 @@ var stop_running = false;
 function run1() {
   stop_running = true;
   if (!running) {
-    step1();
+    for (stepnum=0; stepnum<ST; stepnum++) {
+      step1();
+    }
   } else {
     stop_running = true;
   }
@@ -1146,21 +1148,22 @@ function run_stop_clicked() {
 }
 
 function step_clicked() {
-  stop_running = true;
-  if (!running) {
-    run1();
-  }
-  update_rs_button();
+  beep();
+  run1();
 }
 
-function reload_and_run() {
-  if (running) {
-    run_stop_clicked();
-  }
+function reload_and_wait() {
+  stop_running = true;
+  running = false;
   reset();
   assemble();
   load();
   reset();
+  update_rs_button();
+}
+
+function reload_and_run() {
+  reload_and_wait();
   run_stop_clicked();
 }
 
@@ -1288,11 +1291,9 @@ function beep() {
     </td>
     <td>
       &nbsp; &nbsp; &nbsp; &nbsp;
-      <input type="button" name="run1" value="Step" onclick="beep(); run1();"></input>
-      <!-- <input type="button" name="run"  value="Run"  onclick="run();"></input>
-      <input type="button" name="stop" value="Stop" onclick="stop();"></input> -->
+      <input type="button" name="run1" value="Step" onclick="step_clicked();"></input>
       &nbsp; &nbsp;
-      <input type="button" name="stop" value="↻" onclick="beep(); reload_and_run();" style="background-color: #AAAAFF;"></input>
+      <input type="button" name="stop" value="↻" onclick="beep(); reload_and_wait();" style="background-color: #AAAAFF;"></input>
       &nbsp; &nbsp;
       <button type="button" id="RunStop" onclick="run_stop_clicked(); beep();" style="background-color: #99FF99;">Run/<u>Stop</u></button>
 
