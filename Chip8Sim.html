@@ -246,7 +246,7 @@ function load_menus() {
 }
 
 function load_example() {
-  document.getElementById ( "source" ).value = document.getElementById("Tank (not working yet)").innerHTML;
+  document.getElementById ( "source" ).value = document.getElementById("Generate a Maze").innerHTML;
 }
 
 function onload() {
@@ -824,7 +824,7 @@ function disassemble() {
   document.getElementById ( "source" ).value = "";
   // Process the lines one by one
   for (l=0; l<lines.length; l++) {
-    if (opts.indexOf("L") >= 0) {
+    if ( (opts == "Std") || (opts.indexOf("L") >= 0) ) {
       // document.getElementById ( "source" ).value += "L"+((l*2)+0x200).toString(16).toUpperCase() + ": ";
       document.getElementById ( "source" ).value += ((l*2)+0x200).toString(16).toUpperCase() + ": ";
     }
@@ -832,6 +832,61 @@ function disassemble() {
       document.getElementById ( "source" ).value += lines[l] + "  ";
     }
     document.getElementById ( "source" ).value += disassemble_line ( lines[l] ) + "\n";
+  }
+  if (opts == "Std") {
+    // Generate a "Standard" disassembly
+    // Build a dictionary of all labels (should be one per line at this point)
+    lines = document.getElementById ( "source" ).value.split("\n");
+    all_labels = {};
+    for (l=0; l<lines.length; l++) {
+      if (lines[l].trim().length > 0) {
+        if (lines[l].trim().indexOf(":") >= 0) {
+          all_labels[lines[l].split(":")[0].trim()] = 0;
+        }
+      }
+    }
+    // Build a dictionary of all labels that have actually been used
+    used_labels = {};
+    for (l=0; l<lines.length; l++) {
+      if (lines[l].trim().length > 0) {
+        if (lines[l].trim().indexOf(":") >= 0) {
+          src = lines[l].split(":")[1].trim();
+          src = src.replaceAll(","," ");
+          while (src.indexOf("  ") >= 0) {
+            src = src.replaceAll("  ", " ");
+          }
+          src_parts = src.split(" ");
+          for (p=0; p<src_parts.length; p++) {
+            part = src_parts[p].trim();
+            if (part in all_labels) {
+              used_labels[part] = 1;
+            }
+          }
+        }
+      }
+    }
+    // Regenerate the source text with only those labels that have been used
+    text = "";
+    for (l=0; l<lines.length; l++) {
+      this_line = lines[l].trim();
+      if (this_line.length > 0) {
+        sep = this_line.indexOf(":")
+        if (sep < 0) {
+          text += lines[l] + "\n";
+        } else {
+          lbl = this_line.substr(0,sep).trim();
+          src = this_line.substr(sep+1).trim();
+          if (lbl.trim() in used_labels) {
+            text += lbl + ": " + src + "\n";
+          } else {
+            lsp = "";
+            for (s=0; s<lbl.length; s++) lsp += " ";
+            text += lsp + "  " + src + "\n";
+          }
+        }
+      }
+    }
+    document.getElementById ( "source" ).value = text;
   }
 }
 
@@ -1416,7 +1471,8 @@ function beep() {
     <td>
       <select id="disassem_opts" onchange="changed_format()">
       <option value="S">Src</option>
-      <option value="LS" selected>L+S</option> -->
+      <option value="LS">L+S</option> -->
+      <option value="Std" selected>Std</option> -->
       <option value="HS">H+S</option> -->
       <option value="LHS">LHS</option> -->
       </select>
@@ -1645,7 +1701,7 @@ function beep() {
  &nbsp; &nbsp; &nbsp; <b>Documentation:</b>
 <select id="show_help" onchange="on_doc_change()">
 <option value="none" selected>-- Select --</option>
-<option value="introduction">Introduction</option>
+<option value="introduction" selected>Introduction</option>
 <option value="instruction_set">Instruction Set</option>
 <option value="hex_to_binary">Hex to Binary</option>
 <option value="examples">Examples</option>
@@ -1665,15 +1721,25 @@ function beep() {
 
 
 <div id="introduction" hidden>
-<center><h2>Introduction</h2></center>
+<center><h3>Introduction</h3></center>
 
-This Javascript/HTML program implements a version of the CHIP-8 programming environment.
+This Javascript/HTML program implements a virtual machine and development environment for the CHIP-8 programming language.
 <br></br>
-CHIP-8 source code can be entered in the "<b>Source Code</b>" text area. It can be assembled into the
-"<b>Machine Code</b>" text area. From there it can be loaded into the simulator and run. The CHIP-8
-screen is 64 x 32 (or 40 x 20 in hex).
+CHIP-8 source code can be entered in the <b>Source Code</b> text area. It can then be assembled into the
+<b>Machine Code</b> text area. From there it can be loaded into the <b>CHIP-8 Virtual Machine</b> and run. The CHIP-8
+graphics screen is the program's primary output device and it is 64 x 32 (or 40 x 20 in hex).
+<br></br>
+<center><h3>Quick Start</h3></center>
+The <b>CHIP-8 Development Environment</b> will generally start with a program already in the <b>Source Code</b> text area.
+But that program will need to be assembled and loaded into the <b>CHIP-8 Virtual Machine</b> first.
+These steps (and a Reset) can all be accomplished by clicking the light blue reload button ("<b style="font-size:larger;">↻</b>")
+near the upper right corner. The program can then be run by clicking the "<b>Run/Stop</b>" button (also in the upper
+right corner). Different programs can be either copied or typed into the <b>Source Code</b> text area. Programs
+can also be loaded from the built-in examples using the <b>Examples</b> selector described below.
+
 <br></br>
 <center><h3>Top row buttons: Assembling, Loading, Running</h3></center>
+
 
 The "<b>Assemble</b>" button assembles the source code and produces machine code.
 <br></br>
@@ -1686,9 +1752,10 @@ The "<b>Diassemble as</b>" button will disassemble from the Machine Code window 
 by the selector which is one of the following:
 <ul>
 <li><b>Src</b>: Generates only source - can be reassembled.</li>
-<li><b>L+S</b>: Generates labels and source - can be reassembled.</li>
+<li><b>L+S</b>: Generates all labels and source - can be reassembled.</li>
+<li><b>Std</b>: Generates needed labels and source - can be reassembled.</li>
 <li><b>H+S</b>: Generates hex and source - cannot be reassembled.</li>
-<li><b>LHS</b>: Generates labels, hex, and source - cannot be reassembled.</li>
+<li><b>LHS</b>: Generates all labels, hex, and source - cannot be reassembled.</li>
 </ul>
 
 The "<b>Load</b>" button will load the hex values in the "Machine Code" window into the memory of the simulation.
@@ -1701,7 +1768,7 @@ The "<b>Reset</b>" button clears the graphics output and set all registers to th
 The "<b>Step</b>" button will run a single CHIP-8 instruction and then stop.
 <br></br>
 
-The reload button ("<b>↻</b>") button will assemble, load, and reset.
+The reload button ("<b style="font-size:larger;">↻</b>") button will assemble, load, and reset.
 <br></br>
 
 Finally the "<b>Run/Stop</b>" will toggle the clock between running and stopped.
@@ -1717,17 +1784,17 @@ an example is loaded, it can be easily run with the "Run" button.
 The "Documentation" control allows selecting from a number of topics.
 If the topic doesn't show for some reaon, try clicking the "Show" button.
 Among other things, the full CHIP-8 instruction set and all of the examples
-are available via the Documentation control.
+are available via the Documentation and Examples controls.
 
 <center><h3>Limitations</h3></center>
 <ol>
 <li>The assembler is very quirky. It uses simple string matching and can often
 make mistakes. These will typically show up as extra or missing characters in
 the assembled output (hex). Scroll up and down the hex to look for lines that
-don't have exactly 4 hex characters per line. Try not to use symbol names that
-are subsets of other symbol names. The symbols "loopA" and "loop" might confuse
+don't have exactly 4 hex characters per line. Do not use symbol names that
+are substrings of other symbol names. The symbols "loopA" and "loop" will confuse
 the assembler when it does string search and replace operations. But using
-"loopA" and "loopB" are OK since neither is a subset of the other.
+"loopA" and "loopB" are OK since neither is a substring of the other.
 </li>
 <li>Hex values should be entered with the proper number of digits
 (1 for a nibble, 2 for a byte, 3 for a CHIP-8 address, and 4 for a full address).
@@ -1735,7 +1802,7 @@ Any other number of digits (too many or too few) will cause assembly problems.
 </li>
 <li>A few instructions haven't been implemented yet. Most have not been tested.
 </li>
-<li>There is only limited support for keyboard input and sound.
+<li>There is only limited support for keyboard input and sound at this time.
 </li>
 
 <hr/>
@@ -2711,541 +2778,555 @@ DONE_E: DATA F282  ; E!
                                                              <!-- Attempt to use name to map keys -->
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" name="4,5,6,7,r,t,y,u,f,g,h,j,v,b,n,m" id="Tank (not working yet)">
 ;===========================;
-;  Tank (partially working  ;
+;   Tank  (mostly working)  ;
 ;===========================;
 ;   Disassembled from Hex   ;
-;   (with JP/CALL arrows)   ;
+;                           ;
+; On-Screen Hex Keys:       ;
+;          1=Up             ;
+;     4=Lt 5=Shoot 6=Rt     ;
+;          9=Down           ;
+;                           ;
+; Keyboard keypad Keys:     ;
+;          8=Up             ;
+;     4=Lt 5=Shoot 6=Rt     ;
+;          2=Down           ;
 ;===========================;
-200: JP 230      ; --->
+     JP 230
 202: ADD V6,FB
-204: LD V0,20
-206: SUB V0,V6
-208: SNE VF,00
-20A: LD V6,00
-20C: JP 384      ; --->
-20E: SYS 0FF
-210: SYS 000
+     LD V0,20
+     SUB V0,V6
+     SNE VF,00
+     LD V6,00
+     JP 384
+     SYS 0FF
+     SYS 000
 212: SYS 001
-214: SYS 00C
-216: SYS A00
-218: JP 902      ; --->
-21A: SYS 406
-21C: SYS 802
-21E: SYS 203
-220: CALL C00
-222: SYS F00
-224: SYS 205
-226: CALL E08
-228: SYS 000
-22A: SYS 205
-22C: SYS 000
-22E: SYS 000
-230: LD VE,00   ; Jumped to from 200
-232: LD VD,A0
-234: LD VA,08
-236: LD V9,06
-238: LD V8,04
-23A: LD V7,02
-23C: LD V6,19
-23E: LD V4,10
-240: LD V3,0C
-242: LD V2,00
-244: LD V1,06
-246: LD I,212
-248: LD [I],VA
+     SYS 00C
+     SYS A00
+     JP 902
+     SYS 406
+     SYS 802
+     SYS 203
+     CALL C00
+     SYS F00
+     SYS 205
+     CALL E08
+     SYS 000
+     SYS 205
+     SYS 000
+     SYS 000
+230: LD VE,00
+     LD VD,A0
+     LD VA,08
+     LD V9,06
+     LD V8,04
+     LD V7,02
+     LD V6,19
+     LD V4,10
+     LD V3,0C
+     LD V2,00
+     LD V1,06
+     LD I,212
+     LD [I],VA
 24A: CALL 3D4
-24C: LD V0,40
-24E: LD DT,V0
+     LD V0,40
+     LD DT,V0
 250: LD V0,DT
-252: SE V0,00
-254: JP 250      ; --->
-256: CALL 3D4
-258: CALL 30A
-25A: CALL 362
-25C: LD I,212
-25E: LD V5,[I]
-260: CALL 2AE
+     SE V0,00
+     JP 250
+     CALL 3D4
+     CALL 30A
+     CALL 362
+     LD I,212
+     LD V5,[I]
+     CALL 2AE
 262: CALL 2C6
-264: CALL 2EC
-266: SE VF,01
-268: CALL 314
-26A: SE VF,01
-26C: CALL 2EC
-26E: SE VF,01
-270: CALL 2EC
-272: SE VF,01
-274: CALL 27C
-276: SNE VF,01
-278: JP 366      ; --->
-27A: JP 262      ; --->
+     CALL 2EC
+     SE VF,01
+     CALL 314
+     SE VF,01
+     CALL 2EC
+     SE VF,01
+     CALL 2EC
+     SE VF,01
+     CALL 27C
+     SNE VF,01
+     JP 366
+     JP 262
 27C: LD I,212
-27E: LD V5,[I]
-280: SNE V6,00
-282: SE V5,00
-284: JP 288      ; --->
-286: JP 38C      ; --->
+     LD V5,[I]
+     SNE V6,00
+     SE V5,00
+     JP 288
+     JP 38C
 288: SKNP V7
-28A: LD V2,09
-28C: SKNP V8
-28E: LD V2,04
-290: SKNP V9
-292: LD V2,06
-294: SKNP VA
-296: LD V2,01
-298: SNE V2,00
-29A: RET
-29C: CALL 2AE
-29E: LD V1,V2
-2A0: CALL 39A
-2A2: CALL 3AC
-2A4: LD VC,01
-2A6: LD V2,00
-2A8: LD VF,00
-2AA: LD I,212
-2AC: LD [I],V5
+     LD V2,09
+     SKNP V8
+     LD V2,04
+     SKNP V9
+     LD V2,06
+     SKNP VA
+     LD V2,01
+     SNE V2,00
+     RET
+     CALL 2AE
+     LD V1,V2
+     CALL 39A
+     CALL 3AC
+     LD VC,01
+     LD V2,00
+     LD VF,00
+     LD I,212
+     LD [I],V5
 2AE: LD I,3FF
-2B0: SNE V1,01
-2B2: LD V0,00
-2B4: SNE V1,04
-2B6: LD V0,13
-2B8: SNE V1,06
-2BA: LD V0,0D
-2BC: SNE V1,09
-2BE: LD V0,06
-2C0: ADD I,V0
-2C2: DRW V3,V4,7  ; Draw
-2C4: RET
+     SNE V1,01
+     LD V0,00
+     SNE V1,04
+     LD V0,13
+     SNE V1,06
+     LD V0,0D
+     SNE V1,09
+     LD V0,06
+     ADD I,V0
+     DRW V3,V4,7
+     RET
 2C6: LD V0,05
-2C8: SKP V0
-2CA: RET
-2CC: SNE V5,0F
-2CE: RET
-2D0: LD V5,0F
-2D2: ADD V6,FF
-2D4: LD I,212
-2D6: LD [I],V5
-2D8: ADD V4,03
-2DA: ADD V3,03
-2DC: CALL 39A
-2DE: CALL 39A
-2E0: CALL 39A
-2E2: LD I,223
-2E4: LD [I],V5
-2E6: LD I,419
-2E8: DRW V3,V4,1  ; Draw
-2EA: RET
+     SKP V0
+     RET
+     SNE V5,0F
+     RET
+     LD V5,0F
+     ADD V6,FF
+     LD I,212
+     LD [I],V5
+     ADD V4,03
+     ADD V3,03
+     CALL 39A
+     CALL 39A
+     CALL 39A
+     LD I,223
+     LD [I],V5
+     LD I,419
+     DRW V3,V4,1
+     RET
 2EC: LD I,223
-2EE: LD V5,[I]
-2F0: SNE V5,00
-2F2: RET
-2F4: LD I,419
-2F6: DRW V3,V4,1  ; Draw
-2F8: CALL 39A
-2FA: LD VC,02
-2FC: CALL 3BE
-2FE: SNE VB,BB
-300: JP 30A       ; --->
-302: DRW V3,V4,1  ; Draw
+     LD V5,[I]
+     SNE V5,00
+     RET
+     LD I,419
+     DRW V3,V4,1
+     CALL 39A
+     LD VC,02
+     CALL 3BE
+     SNE VB,BB
+     JP 30A
+     DRW V3,V4,1
 304: LD I,223
-306: LD [I],V5
-308: RET
+     LD [I],V5
+     RET
 30A: LD V5,00
-30C: LD V0,00
-30E: LD I,217
-310: LD [I],V0
-312: JP 304      ; --->
+     LD V0,00
+     LD I,217
+     LD [I],V0
+     JP 304
 314: LD I,21D
-316: LD V5,[I]
-318: SE V5,0F
-31A: JP 344      ; --->
-31C: LD I,41A
-31E: DRW V3,V4,5  ; Draw
-320: SE V2,00
-322: JP 332      ; --->
-324: RND V1,03
-326: LD I,219
-328: ADD I,V1
-32A: LD V0,[I]
-32C: LD V1,V0
-32E: RND V2,0F
-330: ADD V2,01
+     LD V5,[I]
+     SE V5,0F
+     JP 344
+     LD I,41A
+     DRW V3,V4,5
+     SE V2,00
+     JP 332
+     RND V1,03
+     LD I,219
+     ADD I,V1
+     LD V0,[I]
+     LD V1,V0
+     RND V2,0F
+     ADD V2,01
 332: CALL 39A
-334: LD I,41A
-336: LD VC,03
-338: ADD V2,FF
-33A: LD VF,00
-33C: DRW V3,V4,5  ; Draw
+     LD I,41A
+     LD VC,03
+     ADD V2,FF
+     LD VF,00
+     DRW V3,V4,5
 33E: LD I,21D
-340: LD [I],V5
-342: RET
+     LD [I],V5
+     RET
 344: RND V4,07
-346: LD I,41F
-348: ADD I,V4
-34A: LD V0,[I]
-34C: LD V3,V0
-34E: LD I,427
-350: ADD I,V4
-352: LD V0,[I]
-354: LD V4,V0
-356: LD I,41A
-358: DRW V3,V4,5  ; Draw
-35A: LD V0,20
-35C: LD ST,V0
-35E: LD V5,0F
-360: JP 33E      ; --->
+     LD I,41F
+     ADD I,V4
+     LD V0,[I]
+     LD V3,V0
+     LD I,427
+     ADD I,V4
+     LD V0,[I]
+     LD V4,V0
+     LD I,41A
+     DRW V3,V4,5
+     LD V0,20
+     LD ST,V0
+     LD V5,0F
+     JP 33E
 362: LD V5,00
-364: JP 33E      ; --->
+     JP 33E
 366: SNE VC,01
-368: JP 202      ; --->
-36A: SNE VC,02
-36C: JP 382      ; --->
-36E: LD I,223
-370: LD V5,[I]
-372: SNE V5,00
-374: JP 202      ; --->
-376: LD I,419
-378: DRW V3,V4,1  ; Draw
-37A: LD VF,00
-37C: DRW V3,V4,1  ; Draw
-37E: SE VF,01
-380: JP 202      ; --->
+     JP 202
+     SNE VC,02
+     JP 382
+     LD I,223
+     LD V5,[I]
+     SNE V5,00
+     JP 202
+     LD I,419
+     DRW V3,V4,1
+     LD VF,00
+     DRW V3,V4,1
+     SE VF,01
+     JP 202
 382: ADD VE,0A
-384: LD V0,40    ; Jumped from 20C. 398
-386: LD ST,V0
-388: CLS
-38A: JP 24A      ; --->
+384: LD V0,40
+     LD ST,V0
+     CLS
+     JP 24A
 38C: CLS
-38E: CALL 3D4
-390: LD V0,60
-392: LD ST,V0
-394: JP 394      ; Wait forever
-396: LD VE,00
-398: JP 384      ; --->  To 384
+     CALL 3D4
+     LD V0,60
+     LD ST,V0
+394: JP 394
+     LD VE,00
+     JP 384
 39A: SNE V1,01
-39C: ADD V4,FF
-39E: SNE V1,04
-3A0: ADD V3,FF
-3A2: SNE V1,06
-3A4: ADD V3,01
-3A6: SNE V1,09
-3A8: ADD V4,01
-3AA: RET
+     ADD V4,FF
+     SNE V1,04
+     ADD V3,FF
+     SNE V1,06
+     ADD V3,01
+     SNE V1,09
+     ADD V4,01
+     RET
 3AC: SNE V4,00
-3AE: ADD V4,01
-3B0: SNE V3,00
-3B2: ADD V3,01
-3B4: SNE V3,38
-3B6: ADD V3,FF
-3B8: SNE V4,18
-3BA: ADD V4,FF
-3BC: RET
+     ADD V4,01
+     SNE V3,00
+     ADD V3,01
+     SNE V3,38
+     ADD V3,FF
+     SNE V4,18
+     ADD V4,FF
+     RET
 3BE: LD VB,00
-3C0: SNE V4,00
-3C2: JP 3CE      ; --->
-3C4: SNE V3,00
-3C6: JP 3CE      ; --->
-3C8: SNE V3,3F
-3CA: JP 3CE      ; --->
-3CC: SNE V4,1F
+     SNE V4,00
+     JP 3CE
+     SNE V3,00
+     JP 3CE
+     SNE V3,3F
+     JP 3CE
+     SNE V4,1F
 3CE: LD VB,BB
-3D0: LD VF,00
-3D2: RET
+     LD VF,00
+     RET
 3D4: LD V3,08
-3D6: LD V4,08
-3D8: LD I,229
-3DA: LD B,VE
-3DC: LD V2,[I]
-3DE: CALL 3EC
-3E0: LD V3,28
-3E2: LD I,229
-3E4: LD B,V6
-3E6: LD V2,[I]
-3E8: CALL 3F2
-3EA: RET
+     LD V4,08
+     LD I,229
+     LD B,VE
+     LD V2,[I]
+     CALL 3EC
+     LD V3,28
+     LD I,229
+     LD B,V6
+     LD V2,[I]
+     CALL 3F2
+     RET
 3EC: LD F,V0
-3EE: DRW V3,V4,5  ; Draw
-3F0: ADD V3,06
+     DRW V3,V4,5
+     ADD V3,06
 3F2: LD F,V1
-3F4: DRW V3,V4,5  ; Draw
-3F6: ADD V3,06
-3F8: LD F,V2
-3FA: DRW V3,V4,5  ; Draw
-3FC: RET
-3FE: SYS 110
-400: DATA 547C
-402: LD VC,7C
-404: ADD VC,44
+     DRW V3,V4,5
+     ADD V3,06
+     LD F,V2
+     DRW V3,V4,5
+     RET
+     SYS 110
+     DATA 547C
+     LD VC,7C
+     ADD VC,44
 406: ADD VC,7C
-408: LD VC,7C
-40A: SE V4,V1
-40C: SYS 0FC
-40E: ADD V8,6E
-410: ADD V8,FC
-412: SYS 03F
-414: JP E76      ; --->
-416: JP E3F      ; --->
-418: SYS 080
+     LD VC,7C
+     SE V4,V1
+     SYS 0FC
+     ADD V8,6E
+     ADD V8,FC
+     SYS 03F
+     JP E76
+     JP E3F
+     SYS 080
 41A: LD I,870
-41C: DATA F870
-41E: LD I,80B
-420: JP B28      ; --->
-422: SE V8,30
-424: CALL 010
-426: SYS 000
-428: SYS 000
-42A: SYS 81B
-42C: JP B1B      ; --->
-42E: JP 804      ; --->
+     DATA F870
+     LD I,80B
+     JP B28
+     SE V8,30
+     CALL 010
+     SYS 000
+     SYS 000
+     SYS 81B
+     JP B1B
+     JP 804
 </pre></td></tr>
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Tetris (not working yet)">
-200: LD I,2B4
-202: CALL 3E6
-204: CALL 2B6
+;===========================;
+;   Tetris  (not working)   ;
+;===========================;
+;   Disassembled from Hex   ;
+;===========================;
+     LD I,2B4
+     CALL 3E6
+     CALL 2B6
 206: ADD V0,01
-208: DRW V0,V1,1
-20A: SE V0,25
-20C: JP 206
+     DRW V0,V1,1
+     SE V0,25
+     JP 206
 20E: ADD V1,FF
-210: DRW V0,V1,1
-212: LD V0,1A
-214: DRW V0,V1,1
-216: LD V0,25
-218: SE V1,00
-21A: JP 20E
+     DRW V0,V1,1
+     LD V0,1A
+     DRW V0,V1,1
+     LD V0,25
+     SE V1,00
+     JP 20E
 21C: RND V4,70
-21E: SNE V4,70
-220: JP 21C
-222: RND V3,03
-224: LD V0,1E
-226: LD V1,03
-228: CALL 25C
+     SNE V4,70
+     JP 21C
+     RND V3,03
+     LD V0,1E
+     LD V1,03
+     CALL 25C
 22A: LD DT,V5
-22C: DRW V0,V1,4
-22E: SE VF,01
-230: JP 23C
-232: DRW V0,V1,4
-234: ADD V1,FF
-236: DRW V0,V1,4
-238: CALL 340
-23A: JP 21C
+     DRW V0,V1,4
+     SE VF,01
+     JP 23C
+     DRW V0,V1,4
+     ADD V1,FF
+     DRW V0,V1,4
+     CALL 340
+     JP 21C
 23C: SKNP V7
-23E: CALL 272
-240: SKNP V8
-242: CALL 284
-244: SKNP V9
-246: CALL 296
-248: SKP V2
-24A: JP 250
-24C: LD V6,00
-24E: LD DT,V6
+     CALL 272
+     SKNP V8
+     CALL 284
+     SKNP V9
+     CALL 296
+     SKP V2
+     JP 250
+     LD V6,00
+     LD DT,V6
 250: LD V6,DT
-252: SE V6,00
-254: JP 23C
-256: DRW V0,V1,4
-258: ADD V1,01
-25A: JP 22A
+     SE V6,00
+     JP 23C
+     DRW V0,V1,4
+     ADD V1,01
+     JP 22A
 25C: LD I,2C4
-25E: ADD I,V4
-260: LD V6,00
-262: SNE V3,01
-264: LD V6,04
-266: SNE V3,02
-268: LD V6,08
-26A: SNE V3,03
-26C: LD V6,0C
-26E: ADD I,V6
-270: RET
+     ADD I,V4
+     LD V6,00
+     SNE V3,01
+     LD V6,04
+     SNE V3,02
+     LD V6,08
+     SNE V3,03
+     LD V6,0C
+     ADD I,V6
+     RET
 272: DRW V0,V1,4
-274: ADD V0,FF
-276: CALL 334
-278: SE VF,01
-27A: RET
-27C: DRW V0,V1,4
-27E: ADD V0,01
-280: CALL 334
-282: RET
+     ADD V0,FF
+     CALL 334
+     SE VF,01
+     RET
+     DRW V0,V1,4
+     ADD V0,01
+     CALL 334
+     RET
 284: DRW V0,V1,4
-286: ADD V0,01
-288: CALL 334
-28A: SE VF,01
-28C: RET
-28E: DRW V0,V1,4
-290: ADD V0,FF
-292: CALL 334
-294: RET
+     ADD V0,01
+     CALL 334
+     SE VF,01
+     RET
+     DRW V0,V1,4
+     ADD V0,FF
+     CALL 334
+     RET
 296: DRW V0,V1,4
-298: ADD V3,01
-29A: SNE V3,04
-29C: LD V3,00
-29E: CALL 25C
-2A0: CALL 334
-2A2: SE VF,01
-2A4: RET
-2A6: DRW V0,V1,4
-2A8: ADD V3,FF
-2AA: SNE V3,FF
-2AC: LD V3,03
-2AE: CALL 25C
-2B0: CALL 334
-2B2: RET
+     ADD V3,01
+     SNE V3,04
+     LD V3,00
+     CALL 25C
+     CALL 334
+     SE VF,01
+     RET
+     DRW V0,V1,4
+     ADD V3,FF
+     SNE V3,FF
+     LD V3,03
+     CALL 25C
+     CALL 334
+     RET
 2B4: LD V0,V0
 2B6: LD V7,05
-2B8: LD V8,06
-2BA: LD V9,04
-2BC: LD V1,1F
-2BE: LD V5,10
-2C0: LD V2,07
-2C2: RET
+     LD V8,06
+     LD V9,04
+     LD V1,1F
+     LD V5,10
+     LD V2,07
+     RET
 2C4: SNE V0,E0
-2C6: SYS 000
-2C8: SNE V0,C0
-2CA: SNE V0,00
-2CC: CLS
-2CE: SNE V0,00
-2D0: SNE V0,60
-2D2: SNE V0,00
-2D4: SNE V0,40
-2D6: LD V0,00
-2D8: CALL 0E0
-2DA: SYS 000
-2DC: RND V0,40
-2DE: SNE V0,00
-2E0: CLS
-2E2: LD V0,V0
-2E4: SNE V0,40
-2E6: RND V0,00
-2E8: CLS
-2EA: CALL 000
-2EC: LD V0,40
-2EE: SNE V0,00
-2F0: LD V0,VE
-2F2: SYS 000
-2F4: SNE V0,C0
-2F6: LD V0,V0
-2F8: RND V0,60
-2FA: SYS 000
-2FC: SNE V0,C0
-2FE: LD V0,V0
-300: RND V0,60
-302: SYS 000
-304: LD V0,VC
-306: SNE V0,00
-308: SYS 060
-30A: RND V0,00
-30C: LD V0,VC
-30E: SNE V0,00
-310: SYS 060
-312: RND V0,00
-314: RND V0,C0
-316: SYS 000
-318: RND V0,C0
-31A: SYS 000
-31C: RND V0,C0
-31E: SYS 000
-320: RND V0,C0
-322: SYS 000
-324: SNE V0,40
-326: SNE V0,40
-328: SYS 0F0
-32A: SYS 000
-32C: SNE V0,40
-32E: SNE V0,40
-330: SYS 0F0
-332: SYS 000
+     SYS 000
+     SNE V0,C0
+     SNE V0,00
+     CLS
+     SNE V0,00
+     SNE V0,60
+     SNE V0,00
+     SNE V0,40
+     LD V0,00
+     CALL 0E0
+     SYS 000
+     RND V0,40
+     SNE V0,00
+     CLS
+     LD V0,V0
+     SNE V0,40
+     RND V0,00
+     CLS
+     CALL 000
+     LD V0,40
+     SNE V0,00
+     LD V0,VE
+     SYS 000
+     SNE V0,C0
+     LD V0,V0
+     RND V0,60
+     SYS 000
+     SNE V0,C0
+     LD V0,V0
+     RND V0,60
+     SYS 000
+     LD V0,VC
+     SNE V0,00
+     SYS 060
+     RND V0,00
+     LD V0,VC
+     SNE V0,00
+     SYS 060
+     RND V0,00
+     RND V0,C0
+     SYS 000
+     RND V0,C0
+     SYS 000
+     RND V0,C0
+     SYS 000
+     RND V0,C0
+     SYS 000
+     SNE V0,40
+     SNE V0,40
+     SYS 0F0
+     SYS 000
+     SNE V0,40
+     SNE V0,40
+     SYS 0F0
+     SYS 000
 334: DRW V0,V1,4
-336: LD V6,35
+     LD V6,35
 338: ADD V6,FF
-33A: SE V6,00
-33C: JP 338
-33E: RET
+     SE V6,00
+     JP 338
+     RET
 340: LD I,2B4
-342: LD VC,V1
-344: SE VC,1E
-346: ADD VC,01
-348: SE VC,1E
-34A: ADD VC,01
-34C: SE VC,1E
-34E: ADD VC,01
+     LD VC,V1
+     SE VC,1E
+     ADD VC,01
+     SE VC,1E
+     ADD VC,01
+     SE VC,1E
+     ADD VC,01
 350: CALL 35E
-352: SNE VB,0A
-354: CALL 372
-356: SNE V1,VC
-358: RET
-35A: ADD V1,01
-35C: JP 350
+     SNE VB,0A
+     CALL 372
+     SNE V1,VC
+     RET
+     ADD V1,01
+     JP 350
 35E: LD V0,1B
-360: LD VB,00
+     LD VB,00
 362: DRW V0,V1,1
-364: SE VF,00
-366: ADD VB,01
-368: DRW V0,V1,1
-36A: ADD V0,01
-36C: SE V0,25
-36E: JP 362
-370: RET
+     SE VF,00
+     ADD VB,01
+     DRW V0,V1,1
+     ADD V0,01
+     SE V0,25
+     JP 362
+     RET
 372: LD V0,1B
 374: DRW V0,V1,1
-376: ADD V0,01
-378: SE V0,25
-37A: JP 374
-37C: LD VE,V1
-37E: LD VD,VE
-380: ADD VE,FF
+     ADD V0,01
+     SE V0,25
+     JP 374
+     LD VE,V1
+     LD VD,VE
+     ADD VE,FF
 382: LD V0,1B
-384: LD VB,00
+     LD VB,00
 386: DRW V0,VE,1
-388: SE VF,00
-38A: JP 390
-38C: DRW V0,VE,1
-38E: JP 394
+     SE VF,00
+     JP 390
+     DRW V0,VE,1
+     JP 394
 390: DRW V0,VD,1
-392: ADD VB,01
+     ADD VB,01
 394: ADD V0,01
-396: SE V0,25
-398: JP 386
-39A: SNE VB,00
-39C: JP 3A6
-39E: ADD VD,FF
-3A0: ADD VE,FF
-3A2: SE VD,01
-3A4: JP 382
+     SE V0,25
+     JP 386
+     SNE VB,00
+     JP 3A6
+     ADD VD,FF
+     ADD VE,FF
+     SE VD,01
+     JP 382
 3A6: CALL 3C0
-3A8: SE VF,01
-3AA: CALL 3C0
-3AC: ADD VA,01
-3AE: CALL 3C0
-3B0: LD V0,VA
-3B2: LD VD,07
-3B4: AND V0,VD
-3B6: SNE V0,04
-3B8: ADD V5,FE
-3BA: SNE V5,02
-3BC: LD V5,04
-3BE: RET
+     SE VF,01
+     CALL 3C0
+     ADD VA,01
+     CALL 3C0
+     LD V0,VA
+     LD VD,07
+     AND V0,VD
+     SNE V0,04
+     ADD V5,FE
+     SNE V5,02
+     LD V5,04
+     RET
 3C0: LD I,700
-3C2: LD [I],V2
-3C4: LD I,804
-3C6: LD B,VA
-3C8: LD V2,[I]
-3CA: LD F,V0
-3CC: LD VD,32
-3CE: LD VE,00
-3D0: DRW VD,VE,5
-3D2: ADD VD,05
-3D4: LD F,V1
-3D6: DRW VD,VE,5
-3D8: ADD VD,05
-3DA: LD F,V2
-3DC: DRW VD,VE,5
-3DE: LD I,700
-3E0: LD V2,[I]
-3E2: LD I,2B4
-3E4: RET
+     LD [I],V2
+     LD I,804
+     LD B,VA
+     LD V2,[I]
+     LD F,V0
+     LD VD,32
+     LD VE,00
+     DRW VD,VE,5
+     ADD VD,05
+     LD F,V1
+     DRW VD,VE,5
+     ADD VD,05
+     LD F,V2
+     DRW VD,VE,5
+     LD I,700
+     LD V2,[I]
+     LD I,2B4
+     RET
 3E6: LD VA,00
-3E8: LD V0,19
-3EA: RET
-3EC: SE V7,23
+     LD V0,19
+     RET
+     SE V7,23
 </pre></td></tr>
 
 </table>
