@@ -80,7 +80,7 @@ I = 0x0000;  // Index register
 N = 0;       // Number of instructions since reset
 T = 0;       // Timer Register
 CT = 1;      // Clock Time (time per clock tick)
-ST = 1;      // Steps per clock tick
+ST = 15;     // Steps per clock tick
 DT = 11;     // Delay Time (time per delay count)
 
 num_rows = 32;
@@ -246,7 +246,7 @@ function load_menus() {
 }
 
 function load_example() {
-  document.getElementById ( "source" ).value = document.getElementById("Joe's COSMAC COOL").innerHTML;
+  document.getElementById ( "source" ).value = document.getElementById("Tank (not working yet)").innerHTML;
 }
 
 function onload() {
@@ -254,7 +254,67 @@ function onload() {
   load_example();
   init_machine();
   clear_screen();
+  window.addEventListener("keyup", handle_keyup);
+  window.addEventListener("keydown", handle_keydn);
+  // window.addEventListener("keypress", log);
 }
+
+// Keymap starting at 7 (has problems with / key being intercepted)
+keymap7 = {  '7':0, '8':1, '9':2, '0':3,
+             'u':4, 'i':5, 'o':6, 'p':7,
+              'j':8, 'k':9, 'l':10,';':11,
+               'm':12,',':13,'.':14,'/':15  };
+// Keymap starting at 6 (seems to work)
+keymap = {  '6':0, '7':1, '8':2, '9':3,
+             'y':4, 'u':5, 'i':6, 'o':7,
+              'h':8, 'j':9, 'k':10,'l':11,
+               'n':12,'m':13,',':14,'.':15  };
+
+keydown = [ 0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0  ];
+
+remapping = true;
+function kd(n,v) {
+  // console.log ( "Key " + n + " is " + v );
+  if (remapping) {
+    if ((n>=0) && (n<16)) {
+      if      (n == 4) { keydown[8]  = v; } // Left
+      else if (n == 6) { keydown[9]  = v; } // Right
+      else if (n == 1) { keydown[10] = v; } // Up
+      else if (n == 9) { keydown[7]  = v; } // Down
+      else if (n == 5) { keydown[0]  = v; } // Fire
+      // else { keydown[n] = v; }
+    }
+  } else {
+    keydown[n] = v;
+  }
+}
+
+function showkeys() {
+  console.log ( "====================================" );
+  for (j=0; j<4; j++) {
+    console.log ( j + ": " + keydown[(4*j)+0] + " " + keydown[(4*j)+1] + " " + keydown[(4*j)+2] + " " + keydown[(4*j)+3] );
+  }
+}
+
+function handle_keydn(event) {
+  if      (event.key == '4') {  keydown[8]  = 1; } // Left
+  else if (event.key == '6') {  keydown[9]  = 1; } // Right
+  else if (event.key == '8') {  keydown[10] = 1; } // Up
+  else if (event.key == '2') {  keydown[7]  = 1; } // Down
+  else if (event.key == '5') {  keydown[0]  = 1; } // Fire
+}
+
+function handle_keyup(event) {
+  if      (event.key == '4') {  keydown[8]  = 0; } // Left
+  else if (event.key == '6') {  keydown[9]  = 0; } // Right
+  else if (event.key == '8') {  keydown[10] = 0; } // Up
+  else if (event.key == '2') {  keydown[7]  = 0; } // Down
+  else if (event.key == '5') {  keydown[0]  = 0; } // Fire
+}
+
 
 function changed_format() {
   // fmt = document.getElementById ("format_to").value;
@@ -809,7 +869,7 @@ function step1() {
     SP = SP - 2;
   } else if ( (instruction & 0xF000) == 0x0000) {  // SYS NNN
     // console.log ( "SYS" );
-    window.alert ( "The SYS instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
+    window.alert ( "The SYS instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x1000) {  // JP NNN
     // console.log ( "JP" );
@@ -974,21 +1034,35 @@ function step1() {
       V[0xF] = 0;
     }
     PC = PC + 2;
-  } else if ( (instruction & 0xF0FF) == 0xE09E) { // SKP Vx (Skip Key Vx is Pressed)
-    // console.log ( "SKP Vx" );
-    window.alert ( "The SKP Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-    PC = PC + 2;
-  } else if ( (instruction & 0xF000) == 0xE0A1) { // SKNP Vx (Skip Key Vx is Not Pressed)
+  } else if ( (instruction & 0xF0FF) == 0xE09E) { // SKP Vx (Skip if Key Vx is Pressed)
+    // console.log ( "SKP Vx (Skip Key Vx is Pressed)" );
+    // window.alert ( "The SKP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    // console.log ( "The SKP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not fully implemented" );
+    x = (instruction&0x0F00)>>8;
+    if (keydown[x]!=0) {
+      PC = PC + 4;
+    } else {
+      PC = PC + 2;
+    }
+  } else if ( (instruction & 0xF0FF) == 0xE0A1) { // SKNP Vx (Skip if Key Vx is Not Pressed)
     // console.log ( "SKNP Vx" );
-    window.alert ( "The SKNP Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
-    PC = PC + 2;
+    // window.alert ( "The SKNP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    // console.log ( "The SKNP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not fully implemented" );
+    // Always skip for now
+    x = (instruction&0x0F00)>>8;
+    if (keydown[x]==0) {
+      PC = PC + 4;
+    } else {
+      PC = PC + 2;
+    }
   } else if ( (instruction & 0xF0FF) == 0xF007) { // LD Vx, DT  (Set Vx to current Delay Timer value)
     // console.log ( "LD Vx,DT" );
     V[(instruction&0x0F00)>>8] = T;
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF00A) { // LD Vx, K
     // console.log ( "LD Vx,K" );
-    window.alert ( "The LD Vx,K instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
+    window.alert ( "The LD Vx,K instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    console.log ( "The LD Vx,K instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF015) { // LD DT, Vx  (Set Delay Timer value to Vx)
     // console.log ( "LD DT,Vx" );
@@ -996,7 +1070,8 @@ function step1() {
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF018) { // LD ST, Vx
     // console.log ( "LD ST,Vx" );
-    window.alert ( "The LD ST,Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
+    // window.alert ( "The LD ST,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    console.log ( "The LD ST,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF01E) { // ADD I, Vx
     // console.log ( "ADD I, Vx" );
@@ -1013,15 +1088,34 @@ function step1() {
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF033) { // LD B, Vx
     // console.log ( "LD B,Vx" );
-    window.alert ( "The LD B,Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
+    // From Matt Mikolay:
+    //   Store the binary-coded decimal equivalent of the value stored in register VX at addresses I, I+1, and I+2
+    // window.alert ( "The LD B,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    console.log ( "The LD B,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF055) { // LD [I], Vx
     // console.log ( "LD [I],Vx" );
-    window.alert ( "The LD [I],Vx instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
+    // From Matt Mikolay:
+    //   Store the values of registers V0 to VX inclusive in memory starting at address I
+    //   I is set to I + X + 1 after operation
+    x = (instruction&0x0F00) >> 8;
+    for (i=0; i<=x; i++) {
+      mem[I] = V[i];
+      I += 1;
+    }
+    // window.alert ( "The LD [I],Vx instruction (" + instruction + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF065) { // LD Vx, [I]
     // console.log ( "LD Vx,[I]" );
-    window.alert ( "The LD Vx,[I] instruction (" + instruction + ") at " + hex(PC) + " is not implemented" );
+    // From Matt Mikolay:
+    //   Fill registers V0 to VX inclusive with the values stored in memory starting at address I
+    //   I is set to I + X + 1 after operation
+    x = (instruction&0x0F00) >> 8;
+    for (i=0; i<=x; i++) {
+      V[i] = mem[I];
+      I += 1;
+    }
+    // window.alert ( "The LD Vx,[I] instruction (" + instruction + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else {
     // console.log ( "UNKNOWN INSTRUCTION: " + hex4(instruction) );
@@ -1472,22 +1566,22 @@ function beep() {
             <center>
             <table>
               <tr><td>&nbsp;</td></tr>
-              <tr><td><input type="button" value="0" onclick="beep(); key_press('0');"></td>
-                   <td><input type="button" value="1" onclick="beep(); key_press('1');"></td>
-                    <td><input type="button" value="2" onclick="beep(); key_press('2');"></td>
-                     <td><input type="button" value="3" onclick="beep(); key_press('3');"></td> </tr>
-              <tr><td><input type="button" value="4" onclick="beep(); key_press('4');"></td>
-                   <td><input type="button" value="5" onclick="beep(); key_press('5');"></td>
-                    <td><input type="button" value="6" onclick="beep(); key_press('6');"></td>
-                     <td><input type="button" value="7" onclick="beep(); key_press('7');"></td> </tr>
-              <tr><td><input type="button" value="8" onclick="beep(); key_press('8');"></td>
-                   <td><input type="button" value="9" onclick="beep(); key_press('9');"></td>
-                    <td><input type="button" value="A" onclick="beep(); key_press('A');"></td>
-                     <td><input type="button" value="B" onclick="beep(); key_press('B');"></td> </tr>
-              <tr><td><input type="button" value="C" onclick="beep(); key_press('C');"></td>
-                   <td><input type="button" value="D" onclick="beep(); key_press('D');"></td>
-                    <td><input type="button" value="E" onclick="beep(); key_press('E');"></td>
-                     <td><input type="button" value="F" onclick="beep(); key_press('F');"></td> </tr>
+              <tr><td><input type="button" value="0" onmousedown="kd(0,1);" onmouseup="kd(0,0);"></td>
+                   <td><input type="button" value="1" onmousedown="kd(1,1);" onmouseup="kd(1,0);"></td>
+                    <td><input type="button" value="2" onmousedown="kd(2,1);" onmouseup="kd(2,0);"></td>
+                     <td><input type="button" value="3" onmousedown="kd(3,1);" onmouseup="kd(3,0);"></td> </tr>
+              <tr><td><input type="button" value="4" onmousedown="kd(4,1);" onmouseup="kd(4,0);"></td>
+                   <td><input type="button" value="5" onmousedown="kd(5,1);" onmouseup="kd(5,0);"></td>
+                    <td><input type="button" value="6" onmousedown="kd(6,1);" onmouseup="kd(6,0);"></td>
+                     <td><input type="button" value="7" onmousedown="kd(7,1);" onmouseup="kd(7,0);"></td> </tr>
+              <tr><td><input type="button" value="8" onmousedown="kd(8,1);" onmouseup="kd(8,0);"></td>
+                   <td><input type="button" value="9" onmousedown="kd(9,1);" onmouseup="kd(9,0);"></td>
+                    <td><input type="button" value="A" onmousedown="kd(10,1);" onmouseup="kd(10,0);"></td>
+                     <td><input type="button" value="B" onmousedown="kd(11,1);" onmouseup="kd(11,0);"></td> </tr>
+              <tr><td><input type="button" value="C" onmousedown="kd(12,1);" onmouseup="kd(12,0);"></td>
+                   <td><input type="button" value="D" onmousedown="kd(13,1);" onmouseup="kd(13,0);"></td>
+                    <td><input type="button" value="E" onmousedown="kd(14,1);" onmouseup="kd(14,0);"></td>
+                     <td><input type="button" value="F" onmousedown="kd(15,1);" onmouseup="kd(15,0);"></td> </tr>
             </table>
             </center>
           </td>
@@ -1660,8 +1754,8 @@ Fx18 - LD ST, Vx          &#x274C; Load Sound Timer from Vx: Set sound timer = V
 Fx1E - ADD I, Vx          &#x2705; Add Vx to I: Set I = I + Vx.
 Fx29 - LD F, Vx           &#x2705; Load I from Sprite location: Set I = location of sprite for digit Vx.
 Fx33 - LD B, Vx           &#x274C; Load BCD from X into Memory[I]: Store BCD representation of Vx in memory locations I, I+1, and I+2.
-Fx55 - LD [I], Vx         &#x274C; Save Registers: Store registers V0 through Vx in memory starting at location I.
-Fx65 - LD Vx, [I]         &#x274C; Restore Registers: Read registers V0 through Vx from memory starting at location I.
+Fx55 - LD [I], Vx         &#x2705;? Save Registers: Store registers V0 through Vx in memory starting at location I.
+Fx65 - LD Vx, [I]         &#x2705;? Restore Registers: Read registers V0 through Vx from memory starting at location I.
 </pre>
 </tt>
 </td></tr></table>
@@ -2576,6 +2670,315 @@ DONE_N: DATA 90D0  ; N
 DONE_E: DATA F282  ; E!
         DATA E280
         DATA F200
+</pre></td></tr>
+
+<!--
+// Keymap starting at 6 (seems to work)
+keymap = {  '6':0, '7':1, '8':2, '9':3,
+             'y':4, 'u':5, 'i':6, 'o':7,
+              'h':8, 'j':9, 'k':10,'l':11,
+               'n':12,'m':13,',':14,'.':15  };
+With that keymap:
+h (8)  moves left
+j (9)  moves right
+k (10) moves up
+o (7)  moves down
+6 (0)  fires
+
+Map to numeric buttons:
+"4" moves left -> 8
+"6" moves right -> 9
+"1" moves up -> 10
+"9" moves down -> 7
+"5" fires -> 0
+
+keymap = {  '6':0, '7':1, '8':2, '9':3,
+             'y':4, 'u':5, 'i':6, 'o':7,
+              'h':8, 'j':9, 'k':10,'l':11,
+               'n':12,'m':13,',':14,'.':15  };
+
+-->
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" name="4,5,6,7,r,t,y,u,f,g,h,j,v,b,n,m" id="Tank (not working yet)">
+200: JP 230
+202: ADD V6,FB
+204: LD V0,20
+206: SUB V0,V6
+208: SNE VF,00
+20A: LD V6,00
+20C: JP 384
+20E: SYS 0FF
+210: SYS 000
+212: SYS 001
+214: SYS 00C
+216: SYS A00
+218: JP 902
+21A: SYS 406
+21C: SYS 802
+21E: SYS 203
+220: CALL C00
+222: SYS F00
+224: SYS 205
+226: CALL E08
+228: SYS 000
+22A: SYS 205
+22C: SYS 000
+22E: SYS 000
+230: LD VE,00
+232: LD VD,A0
+234: LD VA,08
+236: LD V9,06
+238: LD V8,04
+23A: LD V7,02
+23C: LD V6,19
+23E: LD V4,10
+240: LD V3,0C
+242: LD V2,00
+244: LD V1,06
+246: LD I,212
+248: LD [I],VA
+24A: CALL 3D4
+24C: LD V0,40
+24E: LD DT,V0
+250: LD V0,DT
+252: SE V0,00
+254: JP 250
+256: CALL 3D4
+258: CALL 30A
+25A: CALL 362
+25C: LD I,212
+25E: LD V5,[I]
+260: CALL 2AE
+262: CALL 2C6
+264: CALL 2EC
+266: SE VF,01
+268: CALL 314
+26A: SE VF,01
+26C: CALL 2EC
+26E: SE VF,01
+270: CALL 2EC
+272: SE VF,01
+274: CALL 27C
+276: SNE VF,01
+278: JP 366
+27A: JP 262
+27C: LD I,212
+27E: LD V5,[I]
+280: SNE V6,00
+282: SE V5,00
+284: JP 288
+286: JP 38C
+288: SKNP V7
+28A: LD V2,09
+28C: SKNP V8
+28E: LD V2,04
+290: SKNP V9
+292: LD V2,06
+294: SKNP VA
+296: LD V2,01
+298: SNE V2,00
+29A: RET
+29C: CALL 2AE
+29E: LD V1,V2
+2A0: CALL 39A
+2A2: CALL 3AC
+2A4: LD VC,01
+2A6: LD V2,00
+2A8: LD VF,00
+2AA: LD I,212
+2AC: LD [I],V5
+2AE: LD I,3FF
+2B0: SNE V1,01
+2B2: LD V0,00
+2B4: SNE V1,04
+2B6: LD V0,13
+2B8: SNE V1,06
+2BA: LD V0,0D
+2BC: SNE V1,09
+2BE: LD V0,06
+2C0: ADD I,V0
+2C2: DRW V3,V4,7
+2C4: RET
+2C6: LD V0,05
+2C8: SKP V0
+2CA: RET
+2CC: SNE V5,0F
+2CE: RET
+2D0: LD V5,0F
+2D2: ADD V6,FF
+2D4: LD I,212
+2D6: LD [I],V5
+2D8: ADD V4,03
+2DA: ADD V3,03
+2DC: CALL 39A
+2DE: CALL 39A
+2E0: CALL 39A
+2E2: LD I,223
+2E4: LD [I],V5
+2E6: LD I,419
+2E8: DRW V3,V4,1
+2EA: RET
+2EC: LD I,223
+2EE: LD V5,[I]
+2F0: SNE V5,00
+2F2: RET
+2F4: LD I,419
+2F6: DRW V3,V4,1
+2F8: CALL 39A
+2FA: LD VC,02
+2FC: CALL 3BE
+2FE: SNE VB,BB
+300: JP 30A
+302: DRW V3,V4,1
+304: LD I,223
+306: LD [I],V5
+308: RET
+30A: LD V5,00
+30C: LD V0,00
+30E: LD I,217
+310: LD [I],V0
+312: JP 304
+314: LD I,21D
+316: LD V5,[I]
+318: SE V5,0F
+31A: JP 344
+31C: LD I,41A
+31E: DRW V3,V4,5
+320: SE V2,00
+322: JP 332
+324: RND V1,03
+326: LD I,219
+328: ADD I,V1
+32A: LD V0,[I]
+32C: LD V1,V0
+32E: RND V2,0F
+330: ADD V2,01
+332: CALL 39A
+334: LD I,41A
+336: LD VC,03
+338: ADD V2,FF
+33A: LD VF,00
+33C: DRW V3,V4,5
+33E: LD I,21D
+340: LD [I],V5
+342: RET
+344: RND V4,07
+346: LD I,41F
+348: ADD I,V4
+34A: LD V0,[I]
+34C: LD V3,V0
+34E: LD I,427
+350: ADD I,V4
+352: LD V0,[I]
+354: LD V4,V0
+356: LD I,41A
+358: DRW V3,V4,5
+35A: LD V0,20
+35C: LD ST,V0
+35E: LD V5,0F
+360: JP 33E
+362: LD V5,00
+364: JP 33E
+366: SNE VC,01
+368: JP 202
+36A: SNE VC,02
+36C: JP 382
+36E: LD I,223
+370: LD V5,[I]
+372: SNE V5,00
+374: JP 202
+376: LD I,419
+378: DRW V3,V4,1
+37A: LD VF,00
+37C: DRW V3,V4,1
+37E: SE VF,01
+380: JP 202
+382: ADD VE,0A
+384: LD V0,40
+386: LD ST,V0
+388: CLS
+38A: JP 24A
+38C: CLS
+38E: CALL 3D4
+390: LD V0,60
+392: LD ST,V0
+394: JP 394
+396: LD VE,00
+398: JP 384
+39A: SNE V1,01
+39C: ADD V4,FF
+39E: SNE V1,04
+3A0: ADD V3,FF
+3A2: SNE V1,06
+3A4: ADD V3,01
+3A6: SNE V1,09
+3A8: ADD V4,01
+3AA: RET
+3AC: SNE V4,00
+3AE: ADD V4,01
+3B0: SNE V3,00
+3B2: ADD V3,01
+3B4: SNE V3,38
+3B6: ADD V3,FF
+3B8: SNE V4,18
+3BA: ADD V4,FF
+3BC: RET
+3BE: LD VB,00
+3C0: SNE V4,00
+3C2: JP 3CE
+3C4: SNE V3,00
+3C6: JP 3CE
+3C8: SNE V3,3F
+3CA: JP 3CE
+3CC: SNE V4,1F
+3CE: LD VB,BB
+3D0: LD VF,00
+3D2: RET
+3D4: LD V3,08
+3D6: LD V4,08
+3D8: LD I,229
+3DA: LD B,VE
+3DC: LD V2,[I]
+3DE: CALL 3EC
+3E0: LD V3,28
+3E2: LD I,229
+3E4: LD B,V6
+3E6: LD V2,[I]
+3E8: CALL 3F2
+3EA: RET
+3EC: LD F,V0
+3EE: DRW V3,V4,5
+3F0: ADD V3,06
+3F2: LD F,V1
+3F4: DRW V3,V4,5
+3F6: ADD V3,06
+3F8: LD F,V2
+3FA: DRW V3,V4,5
+3FC: RET
+3FE: SYS 110
+400: DATA 547C
+402: LD VC,7C
+404: ADD VC,44
+406: ADD VC,7C
+408: LD VC,7C
+40A: SE V4,V1
+40C: SYS 0FC
+40E: ADD V8,6E
+410: ADD V8,FC
+412: SYS 03F
+414: JP E76
+416: JP E3F
+418: SYS 080
+41A: LD I,870
+41C: DATA F870
+41E: LD I,80B
+420: JP B28
+422: SE V8,30
+424: CALL 010
+426: SYS 000
+428: SYS 000
+42A: SYS 81B
+42C: JP B1B
+42E: JP 804
 </pre></td></tr>
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Tetris (not working yet)">
