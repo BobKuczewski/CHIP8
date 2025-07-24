@@ -933,6 +933,19 @@ function reset() {
   update_display();
 }
 
+max_alerts = 3;
+num_alerts = 0;
+function limited_alert ( s ) {
+  console.log ( s );
+  if (num_alerts < max_alerts) {
+    window.alert ( s );
+    if (num_alerts == (max_alerts-1)) {
+      window.alert ( "No more alerts will be issued. See console for more messages." );
+    }
+    num_alerts += 1;
+  }
+}
+
 function step1() {
   // Could not use the name "step" for some reason?
   instruction = (mem[PC] << 8) + mem[PC+1];
@@ -950,7 +963,7 @@ function step1() {
     SP = SP - 2;
   } else if ( (instruction & 0xF000) == 0x0000) {  // SYS NNN
     // console.log ( "SYS" );
-    window.alert ( "The SYS instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    limited_alert ( "The SYS instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF000) == 0x1000) {  // JP NNN
     // console.log ( "JP" );
@@ -1117,7 +1130,7 @@ function step1() {
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xE09E) { // SKP Vx (Skip if Key Vx is Pressed)
     // console.log ( "SKP Vx (Skip Key Vx is Pressed)" );
-    // window.alert ( "The SKP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    // limited_alert ( "The SKP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     // console.log ( "The SKP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not fully implemented" );
     x = (instruction&0x0F00)>>8;
     if (keydown[x]!=0) {
@@ -1127,7 +1140,7 @@ function step1() {
     }
   } else if ( (instruction & 0xF0FF) == 0xE0A1) { // SKNP Vx (Skip if Key Vx is Not Pressed)
     // console.log ( "SKNP Vx" );
-    // window.alert ( "The SKNP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    // limited_alert ( "The SKNP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     // console.log ( "The SKNP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not fully implemented" );
     // Always skip for now
     x = (instruction&0x0F00)>>8;
@@ -1143,7 +1156,7 @@ function step1() {
   } else if ( (instruction & 0xF0FF) == 0xF00A) { // LD Vx, K
     // console.log ( "LD Vx,K" );
     // k = wait_for_key();
-    window.alert ( "The LD Vx,K instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    limited_alert ( "The LD Vx,K instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     console.log ( "The LD Vx,K instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF015) { // LD DT, Vx  (Set Delay Timer value to Vx)
@@ -1152,7 +1165,7 @@ function step1() {
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF018) { // LD ST, Vx
     // console.log ( "LD ST,Vx" );
-    // window.alert ( "The LD ST,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    // limited_alert ( "The LD ST,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     beep();
     // console.log ( "The LD ST,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
@@ -1182,7 +1195,7 @@ function step1() {
     mem[I++] = x2;
     mem[I++] = x1;
     mem[I++] = x0;
-    // window.alert ( "The LD B,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    // limited_alert ( "The LD B,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     // console.log ( "The LD B,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF055) { // LD [I], Vx
@@ -1195,7 +1208,7 @@ function step1() {
       mem[I] = V[i];
       I += 1;
     }
-    // window.alert ( "The LD [I],Vx instruction (" + instruction + ") at " + hex4(PC) + " is not implemented" );
+    // limited_alert ( "The LD [I],Vx instruction (" + instruction + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF065) { // LD Vx, [I]
     // console.log ( "LD Vx,[I]" );
@@ -1207,11 +1220,12 @@ function step1() {
       V[i] = mem[I];
       I += 1;
     }
-    // window.alert ( "The LD Vx,[I] instruction (" + instruction + ") at " + hex4(PC) + " is not implemented" );
+    // limited_alert ( "The LD Vx,[I] instruction (" + instruction + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else {
     // console.log ( "UNKNOWN INSTRUCTION: " + hex4(instruction) );
-    window.alert ( "This instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not recognized" );
+    limited_alert ( "This instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not recognized" );
+    console.log ( "This instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not recognized" );
     PC = PC + 2;
   }
   N = N + 1;
