@@ -90,6 +90,8 @@ fg_color = "#AAAAff";
 bg_color = "#000044";
 font_addr = 0x0FA0;  // This could be anywhere but stack or program memory
 
+assem_loaded_once = false;
+
 function replaceAll ( s, t, r ) {
   new_s = (s + " ").trim();
   do {
@@ -1325,6 +1327,12 @@ function update_rs_button() {
 }
 
 function run_stop_clicked() {
+  if (! assem_loaded_once) {
+    // Automatically assemble and load the first time
+    reload_and_wait();
+    assem_loaded_once = true;
+  }
+
   running = !running;
   if (running) {
     stop_running = false;
