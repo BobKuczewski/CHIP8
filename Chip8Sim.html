@@ -275,9 +275,33 @@ keydown = [ 0, 0, 0, 0,
             0, 0, 0, 0,
             0, 0, 0, 0  ];
 
+lastkey = null;
+new_key = null;
+key_wait = null;
+
+function wait_for_key() {
+  if (key_wait == null) {
+    // First call
+    lastkey = null;
+    key_wait = setTimeout ( "wait_for_key()", 10 ); // pause_time_ms );
+  } else {
+    clearTimeout ( key_wait );
+    if (lastkey == null) {
+      // Keep waiting
+      key_wait = setTimeout ( "wait_for_key()", 10 ); // pause_time_ms );
+    } else {
+      // Got a key
+      new_key = lastkey;
+      lastkey = null;
+      key_wait = null;
+    }
+  }
+}
+
 remapping = true;
 function kd(n,v) {
   // console.log ( "Key " + n + " is " + v );
+  lastkey = n;
   if (remapping) {
     if ((n>=0) && (n<16)) {
       if      (n == 4) { keydown[8]  = v; } // Left
@@ -1061,6 +1085,7 @@ function step1() {
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF00A) { // LD Vx, K
     // console.log ( "LD Vx,K" );
+    // k = wait_for_key();
     window.alert ( "The LD Vx,K instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     console.log ( "The LD Vx,K instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
@@ -1071,7 +1096,8 @@ function step1() {
   } else if ( (instruction & 0xF0FF) == 0xF018) { // LD ST, Vx
     // console.log ( "LD ST,Vx" );
     // window.alert ( "The LD ST,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
-    console.log ( "The LD ST,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    beep();
+    // console.log ( "The LD ST,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF01E) { // ADD I, Vx
     // console.log ( "ADD I, Vx" );
@@ -1090,8 +1116,17 @@ function step1() {
     // console.log ( "LD B,Vx" );
     // From Matt Mikolay:
     //   Store the binary-coded decimal equivalent of the value stored in register VX at addresses I, I+1, and I+2
+    // console.log ( "LD B,Vx is (" + hex4(instruction) + ") at " + hex4(PC) + "" );
+    x = V[(instruction&0x0F00) >> 8];
+    x2 = Math.floor(x/100);
+    x1 = Math.floor((x-(100*x2))/10);
+    x0 = x % 10;
+    console.log ( "LD B,Vx with x=" + x + ": " + x2 + " " + x1 + " " + x0 );
+    mem[I++] = x2;
+    mem[I++] = x1;
+    mem[I++] = x0;
     // window.alert ( "The LD B,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
-    console.log ( "The LD B,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
+    // console.log ( "The LD B,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
   } else if ( (instruction & 0xF0FF) == 0xF055) { // LD [I], Vx
     // console.log ( "LD [I],Vx" );
@@ -1721,39 +1756,39 @@ Code   Assembly           Description - All numbers are hexadecimal
        lbl:               &#x2705; A label - must not match any other string in the program!
 nnnn - DATA nnnn          &#x2705; Initialize a data word (all values in hex)
 
-0nnn - SYS addr           &#x274C; Jump to a machine code routine at nnn.
-00E0 - CLS                &#x2705; Clear the display.
-00EE - RET                &#x2705; Return from a subroutine.
-1nnn - JP addr            &#x2705; Jump to location nnn.
-2nnn - CALL addr          &#x2705; Call subroutine at nnn.
-3xkk - SE Vx, byte        &#x2705; Skip If Equal Immediate: Skip next instruction if Vx = kk.
-4xkk - SNE Vx, byte       &#x2705; Skip If Not Equal Immediate: Skip next instruction if Vx != kk.
-5xy0 - SE Vx, Vy          &#x2705; Skip If Equal Register: Skip next instruction if Vx = Vy.
-6xkk - LD Vx, byte        &#x2705; Load Immediate: Set Vx = kk.
-7xkk - ADD Vx, byte       &#x2705; Add Immediate: Set Vx = Vx + kk.
-8xy0 - LD Vx, Vy          &#x2705; Load Register: Set Vx = Vy.
-8xy1 - OR Vx, Vy          &#x2705; Or Register: Set Vx = Vx OR Vy.
-8xy2 - AND Vx, Vy         &#x2705; And Register: Set Vx = Vx AND Vy.
-8xy3 - XOR Vx, Vy         &#x2705; XOR Register: Set Vx = Vx XOR Vy.
-8xy4 - ADD Vx, Vy         &#x2705; Add Register: Set Vx = Vx + Vy, set VF = carry.
-8xy5 - SUB Vx, Vy         &#x2705; Sub Register: Set Vx = Vx - Vy, set VF = NOT borrow.
-8xy6 - SHR Vx {, Vy}      &#x2705; Shift Right: Set Vx = Vx SHR 1.
-8xy7 - SUBN Vx, Vy        &#x2705; Sub Negative Register: Set Vx = Vy - Vx, set VF = NOT borrow.
-8xyE - SHL Vx {, Vy}      &#x2705; Shift Left: Set Vx = Vx SHL 1.
-9xy0 - SNE Vx, Vy         &#x2705; Skip If Not Equal: Skip next instruction if Vx != Vy.
-Annn - LD I, addr         &#x2705; Load I Immediate: Set I = nnn.
-Bnnn - JP V0, addr        &#x2705; Jump to V0 with offset nnn.
-Cxkk - RND Vx, byte       &#x2705; Rand: Set Vx to a random number (0 to 255) AND byte value.
-Dxyn - DRW Vx, Vy, n      &#x2705; Draw: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-Ex9E - SKP Vx             &#x274C; Skip if Key[Vx]: Skip next instruction if key with the value of Vx is pressed.
-ExA1 - SKNP Vx            &#x274C; Skip if !Key[Vx]: Skip next instruction if key with the value of Vx is not pressed.
-Fx07 - LD Vx, DT          &#x2705; Load Vx from Delay Timer: Set Vx = delay timer value.
-Fx0A - LD Vx, K           &#x274C; Load Vx from next Key: Wait for a key press, store the value of the key in Vx.
-Fx15 - LD DT, Vx          &#x2705; Load Delay Timer from Vx: Set delay timer = Vx.
-Fx18 - LD ST, Vx          &#x274C; Load Sound Timer from Vx: Set sound timer = Vx.
-Fx1E - ADD I, Vx          &#x2705; Add Vx to I: Set I = I + Vx.
-Fx29 - LD F, Vx           &#x2705; Load I from Sprite location: Set I = location of sprite for digit Vx.
-Fx33 - LD B, Vx           &#x274C; Load BCD from X into Memory[I]: Store BCD representation of Vx in memory locations I, I+1, and I+2.
+0nnn - SYS addr           &#x274C;? Jump to a machine code routine at nnn.
+00E0 - CLS                &#x2705;? Clear the display.
+00EE - RET                &#x2705;? Return from a subroutine.
+1nnn - JP addr            &#x2705;? Jump to location nnn.
+2nnn - CALL addr          &#x2705;? Call subroutine at nnn.
+3xkk - SE Vx, byte        &#x2705;? Skip If Equal Immediate: Skip next instruction if Vx = kk.
+4xkk - SNE Vx, byte       &#x2705;? Skip If Not Equal Immediate: Skip next instruction if Vx != kk.
+5xy0 - SE Vx, Vy          &#x2705;? Skip If Equal Register: Skip next instruction if Vx = Vy.
+6xkk - LD Vx, byte        &#x2705;? Load Immediate: Set Vx = kk.
+7xkk - ADD Vx, byte       &#x2705;? Add Immediate: Set Vx = Vx + kk.
+8xy0 - LD Vx, Vy          &#x2705;? Load Register: Set Vx = Vy.
+8xy1 - OR Vx, Vy          &#x2705;? Or Register: Set Vx = Vx OR Vy.
+8xy2 - AND Vx, Vy         &#x2705;? And Register: Set Vx = Vx AND Vy.
+8xy3 - XOR Vx, Vy         &#x2705;? XOR Register: Set Vx = Vx XOR Vy.
+8xy4 - ADD Vx, Vy         &#x2705;? Add Register: Set Vx = Vx + Vy, set VF = carry.
+8xy5 - SUB Vx, Vy         &#x2705;? Sub Register: Set Vx = Vx - Vy, set VF = NOT borrow.
+8xy6 - SHR Vx {, Vy}      &#x2705;? Shift Right: Set Vx = Vx SHR 1.
+8xy7 - SUBN Vx, Vy        &#x2705;? Sub Negative Register: Set Vx = Vy - Vx, set VF = NOT borrow.
+8xyE - SHL Vx {, Vy}      &#x2705;? Shift Left: Set Vx = Vx SHL 1.
+9xy0 - SNE Vx, Vy         &#x2705;? Skip If Not Equal: Skip next instruction if Vx != Vy.
+Annn - LD I, addr         &#x2705;? Load I Immediate: Set I = nnn.
+Bnnn - JP V0, addr        &#x2705;? Jump to V0 with offset nnn.
+Cxkk - RND Vx, byte       &#x2705;? Rand: Set Vx to a random number (0 to 255) AND byte value.
+Dxyn - DRW Vx, Vy, n      &#x2705;? Draw: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+Ex9E - SKP Vx             &#x2705;? Skip if Key[Vx]: Skip next instruction if key with the value of Vx is pressed.
+ExA1 - SKNP Vx            &#x2705;? Skip if !Key[Vx]: Skip next instruction if key with the value of Vx is not pressed.
+Fx07 - LD Vx, DT          &#x2705;? Load Vx from Delay Timer: Set Vx = delay timer value.
+Fx0A - LD Vx, K           &#x274C;? Load Vx from next Key: Wait for a key press, store the value of the key in Vx.
+Fx15 - LD DT, Vx          &#x2705;? Load Delay Timer from Vx: Set delay timer = Vx.
+Fx18 - LD ST, Vx          &#x2705;? Load Sound Timer from Vx: Set sound timer = Vx.
+Fx1E - ADD I, Vx          &#x2705;? Add Vx to I: Set I = I + Vx.
+Fx29 - LD F, Vx           &#x2705;? Load I from Sprite location: Set I = location of sprite for digit Vx.
+Fx33 - LD B, Vx           &#x2705;? Load BCD from X into Memory[I]: Store BCD representation of Vx in memory locations I, I+1, and I+2.
 Fx55 - LD [I], Vx         &#x2705;? Save Registers: Store registers V0 through Vx in memory starting at location I.
 Fx65 - LD Vx, [I]         &#x2705;? Restore Registers: Read registers V0 through Vx from memory starting at location I.
 </pre>
@@ -2672,46 +2707,22 @@ DONE_E: DATA F282  ; E!
         DATA F200
 </pre></td></tr>
 
-<!--
-// Keymap starting at 6 (seems to work)
-keymap = {  '6':0, '7':1, '8':2, '9':3,
-             'y':4, 'u':5, 'i':6, 'o':7,
-              'h':8, 'j':9, 'k':10,'l':11,
-               'n':12,'m':13,',':14,'.':15  };
-With that keymap:
-h (8)  moves left
-j (9)  moves right
-k (10) moves up
-o (7)  moves down
-6 (0)  fires
 
-Map to numeric buttons:
-"4" moves left -> 8
-"6" moves right -> 9
-"1" moves up -> 10
-"9" moves down -> 7
-"5" fires -> 0
-
-keymap = {  '6':0, '7':1, '8':2, '9':3,
-             'y':4, 'u':5, 'i':6, 'o':7,
-              'h':8, 'j':9, 'k':10,'l':11,
-               'n':12,'m':13,',':14,'.':15  };
-
--->
+                                                             <!-- Attempt to use name to map keys -->
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" name="4,5,6,7,r,t,y,u,f,g,h,j,v,b,n,m" id="Tank (not working yet)">
-200: JP 230
+200: JP 230      ; --->
 202: ADD V6,FB
 204: LD V0,20
 206: SUB V0,V6
 208: SNE VF,00
 20A: LD V6,00
-20C: JP 384
+20C: JP 384      ; --->
 20E: SYS 0FF
 210: SYS 000
 212: SYS 001
 214: SYS 00C
 216: SYS A00
-218: JP 902
+218: JP 902      ; --->
 21A: SYS 406
 21C: SYS 802
 21E: SYS 203
@@ -2723,7 +2734,7 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 22A: SYS 205
 22C: SYS 000
 22E: SYS 000
-230: LD VE,00
+230: LD VE,00   ; Jumped to from 200
 232: LD VD,A0
 234: LD VA,08
 236: LD V9,06
@@ -2741,7 +2752,7 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 24E: LD DT,V0
 250: LD V0,DT
 252: SE V0,00
-254: JP 250
+254: JP 250      ; --->
 256: CALL 3D4
 258: CALL 30A
 25A: CALL 362
@@ -2759,14 +2770,14 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 272: SE VF,01
 274: CALL 27C
 276: SNE VF,01
-278: JP 366
-27A: JP 262
+278: JP 366      ; --->
+27A: JP 262      ; --->
 27C: LD I,212
 27E: LD V5,[I]
 280: SNE V6,00
 282: SE V5,00
-284: JP 288
-286: JP 38C
+284: JP 288      ; --->
+286: JP 38C      ; --->
 288: SKNP V7
 28A: LD V2,09
 28C: SKNP V8
@@ -2796,7 +2807,7 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 2BC: SNE V1,09
 2BE: LD V0,06
 2C0: ADD I,V0
-2C2: DRW V3,V4,7
+2C2: DRW V3,V4,7  ; Draw
 2C4: RET
 2C6: LD V0,05
 2C8: SKP V0
@@ -2815,20 +2826,20 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 2E2: LD I,223
 2E4: LD [I],V5
 2E6: LD I,419
-2E8: DRW V3,V4,1
+2E8: DRW V3,V4,1  ; Draw
 2EA: RET
 2EC: LD I,223
 2EE: LD V5,[I]
 2F0: SNE V5,00
 2F2: RET
 2F4: LD I,419
-2F6: DRW V3,V4,1
+2F6: DRW V3,V4,1  ; Draw
 2F8: CALL 39A
 2FA: LD VC,02
 2FC: CALL 3BE
 2FE: SNE VB,BB
-300: JP 30A
-302: DRW V3,V4,1
+300: JP 30A       ; --->
+302: DRW V3,V4,1  ; Draw
 304: LD I,223
 306: LD [I],V5
 308: RET
@@ -2836,15 +2847,15 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 30C: LD V0,00
 30E: LD I,217
 310: LD [I],V0
-312: JP 304
+312: JP 304      ; --->
 314: LD I,21D
 316: LD V5,[I]
 318: SE V5,0F
-31A: JP 344
+31A: JP 344      ; --->
 31C: LD I,41A
-31E: DRW V3,V4,5
+31E: DRW V3,V4,5  ; Draw
 320: SE V2,00
-322: JP 332
+322: JP 332      ; --->
 324: RND V1,03
 326: LD I,219
 328: ADD I,V1
@@ -2857,7 +2868,7 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 336: LD VC,03
 338: ADD V2,FF
 33A: LD VF,00
-33C: DRW V3,V4,5
+33C: DRW V3,V4,5  ; Draw
 33E: LD I,21D
 340: LD [I],V5
 342: RET
@@ -2871,39 +2882,39 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 352: LD V0,[I]
 354: LD V4,V0
 356: LD I,41A
-358: DRW V3,V4,5
+358: DRW V3,V4,5  ; Draw
 35A: LD V0,20
 35C: LD ST,V0
 35E: LD V5,0F
-360: JP 33E
+360: JP 33E      ; --->
 362: LD V5,00
-364: JP 33E
+364: JP 33E      ; --->
 366: SNE VC,01
-368: JP 202
+368: JP 202      ; --->
 36A: SNE VC,02
-36C: JP 382
+36C: JP 382      ; --->
 36E: LD I,223
 370: LD V5,[I]
 372: SNE V5,00
-374: JP 202
+374: JP 202      ; --->
 376: LD I,419
-378: DRW V3,V4,1
+378: DRW V3,V4,1  ; Draw
 37A: LD VF,00
-37C: DRW V3,V4,1
+37C: DRW V3,V4,1  ; Draw
 37E: SE VF,01
-380: JP 202
+380: JP 202      ; --->
 382: ADD VE,0A
-384: LD V0,40
+384: LD V0,40    ; Jumped from 20C. 398
 386: LD ST,V0
 388: CLS
-38A: JP 24A
+38A: JP 24A      ; --->
 38C: CLS
 38E: CALL 3D4
 390: LD V0,60
 392: LD ST,V0
-394: JP 394
+394: JP 394      ; Wait forever
 396: LD VE,00
-398: JP 384
+398: JP 384      ; --->  To 384
 39A: SNE V1,01
 39C: ADD V4,FF
 39E: SNE V1,04
@@ -2924,11 +2935,11 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 3BC: RET
 3BE: LD VB,00
 3C0: SNE V4,00
-3C2: JP 3CE
+3C2: JP 3CE      ; --->
 3C4: SNE V3,00
-3C6: JP 3CE
+3C6: JP 3CE      ; --->
 3C8: SNE V3,3F
-3CA: JP 3CE
+3CA: JP 3CE      ; --->
 3CC: SNE V4,1F
 3CE: LD VB,BB
 3D0: LD VF,00
@@ -2946,13 +2957,13 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 3E8: CALL 3F2
 3EA: RET
 3EC: LD F,V0
-3EE: DRW V3,V4,5
+3EE: DRW V3,V4,5  ; Draw
 3F0: ADD V3,06
 3F2: LD F,V1
-3F4: DRW V3,V4,5
+3F4: DRW V3,V4,5  ; Draw
 3F6: ADD V3,06
 3F8: LD F,V2
-3FA: DRW V3,V4,5
+3FA: DRW V3,V4,5  ; Draw
 3FC: RET
 3FE: SYS 110
 400: DATA 547C
@@ -2965,20 +2976,20 @@ keymap = {  '6':0, '7':1, '8':2, '9':3,
 40E: ADD V8,6E
 410: ADD V8,FC
 412: SYS 03F
-414: JP E76
-416: JP E3F
+414: JP E76      ; --->
+416: JP E3F      ; --->
 418: SYS 080
 41A: LD I,870
 41C: DATA F870
 41E: LD I,80B
-420: JP B28
+420: JP B28      ; --->
 422: SE V8,30
 424: CALL 010
 426: SYS 000
 428: SYS 000
 42A: SYS 81B
-42C: JP B1B
-42E: JP 804
+42C: JP B1B      ; --->
+42E: JP 804      ; --->
 </pre></td></tr>
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Tetris (not working yet)">
