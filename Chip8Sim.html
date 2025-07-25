@@ -269,12 +269,15 @@ function load_menus() {
 
 function load_example() {
   // document.getElementById ( "source" ).value = document.getElementById("Generate a Maze").innerHTML;
-  document.getElementById ( "source" ).value = document.getElementById("Tetris Merged").innerHTML;
+  document.getElementById ( "source" ).value = document.getElementById("Tetris").innerHTML;
 }
 
 function onload() {
   load_menus();
-  load_example();
+  //load_example();
+  selector = document.getElementById("example_select");
+  selector[selector.selectedIndex].value = "Tetris";
+  on_example_change();
   init_machine();
   clear_screen();
   window.addEventListener("keyup", handle_keyup);
@@ -329,22 +332,72 @@ function wait_for_key() {
   }
 }
 
-remapping = true;
-function kd(n,v) {
-  // console.log ( "Key " + n + " is " + v );
+button_remapping = false;
+button_remap=[[4,8],[6,9],[1,10],[9,7],[5,0]]; // Tank
+button_remap=[[4,2],[6,4],[5,6]]; // Tetris
+
+// Tetris key mapping:
+//  Keyboard "2" moves left
+//  Keyboard "4" moves right
+//  Keyboard "6" rotates
+//
+function bd(n,v) {
+  // console.log ( "Button " + n + " is " + v );
   lastkey = n;
-  if (remapping) {
+  if (button_remapping) {
     if ((n>=0) && (n<16)) {
-      if      (n == 4) { keydown[8]  = v; } // Left
-      else if (n == 6) { keydown[9]  = v; } // Right
-      else if (n == 1) { keydown[10] = v; } // Up
-      else if (n == 9) { keydown[7]  = v; } // Down
-      else if (n == 5) { keydown[0]  = v; } // Fire
-      // else { keydown[n] = v; }
+      for (i=0; i<button_remap.length; i++) {
+        if (n == button_remap[i][0]) {
+          keydown[button_remap[i][1]] = v;
+        }
+      }
     }
   } else {
     keydown[n] = v;
   }
+}
+
+key_remapping = true;
+key_remap = [[4,8],[6,9],[8,10],[2,7],[5,0]]; // Tank
+key_remap = [[2,2],[4,7],[6,8],[5,9]]; // Tetris: unmapped: 2=drop  7=left  8=right  9 = rotate
+key_remap = []
+
+function kd(n,v) {
+  // console.log ( "Key " + n + " is " + v );
+  lastkey = n;
+  if (key_remapping) {
+    if ((n>=0) && (n<16)) {
+      for (i=0; i<key_remap.length; i++) {
+        if (n == key_remap[i][0]) {
+          keydown[key_remap[i][1]] = v;
+        }
+      }
+    }
+  } else {
+    keydown[n] = v;
+  }
+}
+
+function handle_keydn(event) {
+  kd(Number(event.key),1);
+  /*
+  if      (event.key == '4') {  keydown[8]  = 1; } // Left
+  else if (event.key == '6') {  keydown[9]  = 1; } // Right
+  else if (event.key == '8') {  keydown[10] = 1; } // Up
+  else if (event.key == '2') {  keydown[7]  = 1; } // Down
+  else if (event.key == '5') {  keydown[0]  = 1; } // Fire
+  */
+}
+
+function handle_keyup(event) {
+  kd(Number(event.key),0);
+  /*
+  if      (event.key == '4') {  keydown[8]  = 0; } // Left
+  else if (event.key == '6') {  keydown[9]  = 0; } // Right
+  else if (event.key == '8') {  keydown[10] = 0; } // Up
+  else if (event.key == '2') {  keydown[7]  = 0; } // Down
+  else if (event.key == '5') {  keydown[0]  = 0; } // Fire
+  */
 }
 
 function showkeys() {
@@ -354,21 +407,6 @@ function showkeys() {
   }
 }
 
-function handle_keydn(event) {
-  if      (event.key == '4') {  keydown[8]  = 1; } // Left
-  else if (event.key == '6') {  keydown[9]  = 1; } // Right
-  else if (event.key == '8') {  keydown[10] = 1; } // Up
-  else if (event.key == '2') {  keydown[7]  = 1; } // Down
-  else if (event.key == '5') {  keydown[0]  = 1; } // Fire
-}
-
-function handle_keyup(event) {
-  if      (event.key == '4') {  keydown[8]  = 0; } // Left
-  else if (event.key == '6') {  keydown[9]  = 0; } // Right
-  else if (event.key == '8') {  keydown[10] = 0; } // Up
-  else if (event.key == '2') {  keydown[7]  = 0; } // Down
-  else if (event.key == '5') {  keydown[0]  = 0; } // Fire
-}
 
 
 function changed_format() {
@@ -1366,6 +1404,14 @@ function on_example_change() {
   } else {
     document.getElementById ( "source" ).value = document.getElementById(setting).innerHTML;
   }
+  if ("name" in document.getElementById(setting).attributes) {
+    // Use the name for the key mapping data
+    namedata = document.getElementById(setting).attributes['name'].value;
+    console.log ( "Name data = " + namedata );
+    eval("key_remap="+namedata);
+    console.log ( "key_remap evaluated to: " );
+    console.log ( key_remap );
+  }
 }
 
 function update_rs_button() {
@@ -1717,22 +1763,22 @@ function beep() {
             <center>
             <table>
               <tr><td>&nbsp;</td></tr>
-              <tr><td><input type="button" value="0" onmousedown="kd(0,1);" onmouseup="kd(0,0);"></td>
-                   <td><input type="button" value="1" onmousedown="kd(1,1);" onmouseup="kd(1,0);"></td>
-                    <td><input type="button" value="2" onmousedown="kd(2,1);" onmouseup="kd(2,0);"></td>
-                     <td><input type="button" value="3" onmousedown="kd(3,1);" onmouseup="kd(3,0);"></td> </tr>
-              <tr><td><input type="button" value="4" onmousedown="kd(4,1);" onmouseup="kd(4,0);"></td>
-                   <td><input type="button" value="5" onmousedown="kd(5,1);" onmouseup="kd(5,0);"></td>
-                    <td><input type="button" value="6" onmousedown="kd(6,1);" onmouseup="kd(6,0);"></td>
-                     <td><input type="button" value="7" onmousedown="kd(7,1);" onmouseup="kd(7,0);"></td> </tr>
-              <tr><td><input type="button" value="8" onmousedown="kd(8,1);" onmouseup="kd(8,0);"></td>
-                   <td><input type="button" value="9" onmousedown="kd(9,1);" onmouseup="kd(9,0);"></td>
-                    <td><input type="button" value="A" onmousedown="kd(10,1);" onmouseup="kd(10,0);"></td>
-                     <td><input type="button" value="B" onmousedown="kd(11,1);" onmouseup="kd(11,0);"></td> </tr>
-              <tr><td><input type="button" value="C" onmousedown="kd(12,1);" onmouseup="kd(12,0);"></td>
-                   <td><input type="button" value="D" onmousedown="kd(13,1);" onmouseup="kd(13,0);"></td>
-                    <td><input type="button" value="E" onmousedown="kd(14,1);" onmouseup="kd(14,0);"></td>
-                     <td><input type="button" value="F" onmousedown="kd(15,1);" onmouseup="kd(15,0);"></td> </tr>
+              <tr><td><input type="button" value="0" onmousedown="bd(0,1);" onmouseup="bd(0,0);"></td>
+                   <td><input type="button" value="1" onmousedown="bd(1,1);" onmouseup="bd(1,0);"></td>
+                    <td><input type="button" value="2" onmousedown="bd(2,1);" onmouseup="bd(2,0);"></td>
+                     <td><input type="button" value="3" onmousedown="bd(3,1);" onmouseup="bd(3,0);"></td> </tr>
+              <tr><td><input type="button" value="4" onmousedown="bd(4,1);" onmouseup="bd(4,0);"></td>
+                   <td><input type="button" value="5" onmousedown="bd(5,1);" onmouseup="bd(5,0);"></td>
+                    <td><input type="button" value="6" onmousedown="bd(6,1);" onmouseup="bd(6,0);"></td>
+                     <td><input type="button" value="7" onmousedown="bd(7,1);" onmouseup="bd(7,0);"></td> </tr>
+              <tr><td><input type="button" value="8" onmousedown="bd(8,1);" onmouseup="bd(8,0);"></td>
+                   <td><input type="button" value="9" onmousedown="bd(9,1);" onmouseup="bd(9,0);"></td>
+                    <td><input type="button" value="A" onmousedown="bd(10,1);" onmouseup="bd(10,0);"></td>
+                     <td><input type="button" value="B" onmousedown="bd(11,1);" onmouseup="bd(11,0);"></td> </tr>
+              <tr><td><input type="button" value="C" onmousedown="bd(12,1);" onmouseup="bd(12,0);"></td>
+                   <td><input type="button" value="D" onmousedown="bd(13,1);" onmouseup="bd(13,0);"></td>
+                    <td><input type="button" value="E" onmousedown="bd(14,1);" onmouseup="bd(14,0);"></td>
+                     <td><input type="button" value="F" onmousedown="bd(15,1);" onmouseup="bd(15,0);"></td> </tr>
             </table>
             </center>
           </td>
@@ -2836,8 +2882,8 @@ DONE_E: DATA F282  ; E!
 </pre></td></tr>
 
 
-                                                             <!-- Attempt to use name to map keys -->
-<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" name="4,5,6,7,r,t,y,u,f,g,h,j,v,b,n,m" id="Tank (not working yet)">
+                                                             <!-- Attempt to use name to map keys --> 
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" name="[[4,8],[6,9],[1,10],[9,7],[5,0]]" id="Tank (not working yet)">
 ;===========================;
 ;   Tank  (mostly working)  ;
 ;===========================;
@@ -3135,7 +3181,7 @@ DONE_E: DATA F282  ; E!
      JP 804
 </pre></td></tr>
                                                              <!-- Attempt to use name to map keys -->
-<tr class="ex"><td class="ex" valign="top"><pre class="exhex" name="4,5,6,7,r,t,y,u,f,g,h,j,v,b,n,m" id="Tank Hex (not working yet)">
+<tr class="ex"><td class="ex" valign="top"><pre class="exhex" name="[[4,8],[6,9],[1,10],[9,7],[5,0]]" id="Tank Hex (not working yet)">
  12 30 76 fb 60 20 80 65 4f 00 66 00 13 84 00 ff
  00 00 00 01 00 0c 0a 00 19 02 04 06 08 02 02 03
  2c 00 0f 00 02 05 2e 08 00 00 02 05 00 00 00 00
@@ -3174,12 +3220,17 @@ DONE_E: DATA F282  ; E!
 </pre></td></tr>
 
 
-<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Tetris Merged">
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" name="[[2,2],[4,7],[6,8],[5,9]]" id="Tetris">
 ;===========================;
-;   Tetris  (not working)   ;
+;          Tetris           ;
 ;===========================;
-;   Disassembled from Hex   ;
-;   Data values from a run  ;
+;                           ;
+;  4          5         6   ;
+; Left      Rotate    Right ;
+;                           ;
+;             2             ;
+;            Drop           ;
+;                           ;
 ;===========================;
      LD I,2B4
      CALL 3E6
@@ -3434,262 +3485,6 @@ DONE_E: DATA F282  ; E!
      LD V0,19
      RET
 3EC: DATA 3723</pre></td></tr>
-
-
-<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Tetris (not working yet)">
-;===========================;
-;   Tetris  (not working)   ;
-;===========================;
-;   Disassembled from Hex   ;
-;===========================;
-     LD I,2B4
-     CALL 3E6
-     CALL 2B6
-206: ADD V0,01
-     DRW V0,V1,1
-     SE V0,25
-     JP 206
-20E: ADD V1,FF
-     DRW V0,V1,1
-     LD V0,1A
-     DRW V0,V1,1
-     LD V0,25
-     SE V1,00
-     JP 20E
-21C: RND V4,70
-     SNE V4,70
-     JP 21C
-     RND V3,03
-     LD V0,1E
-     LD V1,03
-     CALL 25C
-22A: LD DT,V5
-     DRW V0,V1,4
-     SE VF,01
-     JP 23C
-     DRW V0,V1,4
-     ADD V1,FF
-     DRW V0,V1,4
-     CALL 340
-     JP 21C
-23C: SKNP V7
-     CALL 272
-     SKNP V8
-     CALL 284
-     SKNP V9
-     CALL 296
-     SKP V2
-     JP 250
-     LD V6,00
-     LD DT,V6
-250: LD V6,DT
-     SE V6,00
-     JP 23C
-     DRW V0,V1,4
-     ADD V1,01
-     JP 22A
-25C: LD I,2C4
-     ADD I,V4
-     LD V6,00
-     SNE V3,01
-     LD V6,04
-     SNE V3,02
-     LD V6,08
-     SNE V3,03
-     LD V6,0C
-     ADD I,V6
-     RET
-272: DRW V0,V1,4
-     ADD V0,FF
-     CALL 334
-     SE VF,01
-     RET
-     DRW V0,V1,4
-     ADD V0,01
-     CALL 334
-     RET
-284: DRW V0,V1,4
-     ADD V0,01
-     CALL 334
-     SE VF,01
-     RET
-     DRW V0,V1,4
-     ADD V0,FF
-     CALL 334
-     RET
-296: DRW V0,V1,4
-     ADD V3,01
-     SNE V3,04
-     LD V3,00
-     CALL 25C
-     CALL 334
-     SE VF,01
-     RET
-     DRW V0,V1,4
-     ADD V3,FF
-     SNE V3,FF
-     LD V3,03
-     CALL 25C
-     CALL 334
-     RET
-2B4: LD V0,V0
-2B6: LD V7,05
-     LD V8,06
-     LD V9,04
-     LD V1,1F
-     LD V5,10
-     LD V2,07
-     RET
-2C4: SNE V0,E0
-     SYS 000
-     SNE V0,C0
-     SNE V0,00
-     CLS
-     SNE V0,00
-     SNE V0,60
-     SNE V0,00
-     SNE V0,40
-     LD V0,00
-     CALL 0E0
-     SYS 000
-     RND V0,40
-     SNE V0,00
-     CLS
-     LD V0,V0
-     SNE V0,40
-     RND V0,00
-     CLS
-     CALL 000
-     LD V0,40
-     SNE V0,00
-     LD V0,VE
-     SYS 000
-     SNE V0,C0
-     LD V0,V0
-     RND V0,60
-     SYS 000
-     SNE V0,C0
-     LD V0,V0
-     RND V0,60
-     SYS 000
-     LD V0,VC
-     SNE V0,00
-     SYS 060
-     RND V0,00
-     LD V0,VC
-     SNE V0,00
-     SYS 060
-     RND V0,00
-     RND V0,C0
-     SYS 000
-     RND V0,C0
-     SYS 000
-     RND V0,C0
-     SYS 000
-     RND V0,C0
-     SYS 000
-     SNE V0,40
-     SNE V0,40
-     SYS 0F0
-     SYS 000
-     SNE V0,40
-     SNE V0,40
-     SYS 0F0
-     SYS 000
-334: DRW V0,V1,4
-     LD V6,35
-338: ADD V6,FF
-     SE V6,00
-     JP 338
-     RET
-340: LD I,2B4
-     LD VC,V1
-     SE VC,1E
-     ADD VC,01
-     SE VC,1E
-     ADD VC,01
-     SE VC,1E
-     ADD VC,01
-350: CALL 35E
-     SNE VB,0A
-     CALL 372
-     SNE V1,VC
-     RET
-     ADD V1,01
-     JP 350
-35E: LD V0,1B
-     LD VB,00
-362: DRW V0,V1,1
-     SE VF,00
-     ADD VB,01
-     DRW V0,V1,1
-     ADD V0,01
-     SE V0,25
-     JP 362
-     RET
-372: LD V0,1B
-374: DRW V0,V1,1
-     ADD V0,01
-     SE V0,25
-     JP 374
-     LD VE,V1
-     LD VD,VE
-     ADD VE,FF
-382: LD V0,1B
-     LD VB,00
-386: DRW V0,VE,1
-     SE VF,00
-     JP 390
-     DRW V0,VE,1
-     JP 394
-390: DRW V0,VD,1
-     ADD VB,01
-394: ADD V0,01
-     SE V0,25
-     JP 386
-     SNE VB,00
-     JP 3A6
-     ADD VD,FF
-     ADD VE,FF
-     SE VD,01
-     JP 382
-3A6: CALL 3C0
-     SE VF,01
-     CALL 3C0
-     ADD VA,01
-     CALL 3C0
-     LD V0,VA
-     LD VD,07
-     AND V0,VD
-     SNE V0,04
-     ADD V5,FE
-     SNE V5,02
-     LD V5,04
-     RET
-3C0: LD I,700
-     LD [I],V2
-     LD I,804
-     LD B,VA
-     LD V2,[I]
-     LD F,V0
-     LD VD,32
-     LD VE,00
-     DRW VD,VE,5
-     ADD VD,05
-     LD F,V1
-     DRW VD,VE,5
-     ADD VD,05
-     LD F,V2
-     DRW VD,VE,5
-     LD I,700
-     LD V2,[I]
-     LD I,2B4
-     RET
-3E6: LD VA,00
-     LD V0,19
-     RET
-     SE V7,23
-</pre></td></tr>
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Tetris Hex (not working yet)">
  a2 b4 23 e6 22 b6 70 01 d0 11 30 25 12 06 71 ff
