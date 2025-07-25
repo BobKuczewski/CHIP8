@@ -70,6 +70,7 @@ th.ex {
 </style>
 
 <script>
+debugging = false;  // Creates a text area during onload and fills while running
 
 mem = [];
 mem_top = 0x0200; // Address of memory shown at top of the memory list
@@ -91,6 +92,17 @@ bg_color = "#000044";
 font_addr = 0x0FA0;  // This could be anywhere but stack or program memory
 
 assem_loaded_once = false;
+
+function log_entry() {
+  if (debugging) {
+    logtextarea = document.getElementById("log");
+    logtextarea.value += " PC:"+hex4(PC);
+    logtextarea.value += " SP:"+hex4(SP);
+    logtextarea.value += " I: "+hex4(I);
+    logtextarea.value += " V:["+V.toString()+"]";
+    logtextarea.value += "\n";
+  }
+}
 
 function replaceAll ( s, t, r ) {
   new_s = (s + " ").trim();
@@ -245,10 +257,19 @@ function load_menus() {
     example_menu.appendChild ( opt );
     // console.log ( "Example: " + ex[i].id );
   }
+  ex = document.getElementsByClassName("exhex");
+  for (i=0; i<ex.length; i++) {
+    opt = document.createElement ( "option" );
+    opt.value = "Hex:"+ex[i].id;
+    opt.innerHTML = "Hex:"+ex[i].id;
+    example_menu.appendChild ( opt );
+    // console.log ( "Example: " + ex[i].id );
+  }
 }
 
 function load_example() {
-  document.getElementById ( "source" ).value = document.getElementById("Generate a Maze").innerHTML;
+  // document.getElementById ( "source" ).value = document.getElementById("Generate a Maze").innerHTML;
+  document.getElementById ( "source" ).value = document.getElementById("Tetris Merged").innerHTML;
 }
 
 function onload() {
@@ -259,6 +280,14 @@ function onload() {
   window.addEventListener("keyup", handle_keyup);
   window.addEventListener("keydown", handle_keydn);
   // window.addEventListener("keypress", log);
+  if (debugging) {
+    plog = document.getElementById("plog");
+    plog.innerHTML = '<textarea id="log" rows="1" cols="60" ' +
+                     'autocomplete="off" autocorrect="off" autocapitalize="off" ' +
+                     'spellcheck="false"></textarea><p/><hr/><p/>';
+    logtextarea = document.getElementById("log");
+    logtextarea.value = "";
+  }
 }
 
 // Keymap starting at 7 (has problems with / key being intercepted)
@@ -385,7 +414,9 @@ function assemble_text ( srctxt ) {
   // srctxt = document.getElementById ( "source" ).value;
   // console.log ( "Text = " + srctxt );
 
-  // Initialize the binary text outpu
+  if (srctxt.length == 0) return;
+
+  // Initialize the binary text output
   bintxt = "";
 
   // Normalize line endings and remove empty lines
@@ -948,6 +979,8 @@ function limited_alert ( s ) {
 
 function step1() {
   // Could not use the name "step" for some reason?
+  // document.getElementById("log").value += hex4(PC) + "> " + hex2(mem[PC]) + hex2(mem[PC+1]) + "\n";
+  log_entry();
   instruction = (mem[PC] << 8) + mem[PC+1];
   // console.log ( "Execute " + hex4(instruction) );
   if (instruction == 0x00E0) { // CLS
@@ -1010,7 +1043,7 @@ function step1() {
   } else if ( (instruction & 0xF000) == 0x7000) { // ADD Vx,byte
     // console.log ( "ADD immediate === Add Vx, byte with Vx=" + hex((instruction&0x0F00)>>8) + ", byte=" + hex(instruction&0x00FF) );
     x = (instruction&0x0F00)>>8;
-    V[x] = V[x] + (instruction&0x00FF);
+    V[x] = (V[x] + (instruction&0x00FF)) & 0xFF;
     PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8000) { // LD Vx,Vy
     // console.log ( "LD Vx,Vy" );
@@ -1327,7 +1360,12 @@ function on_doc_change() {
 function on_example_change() {
   let selector = document.getElementById("example_select");
   let setting = selector[selector.selectedIndex].value;
-  document.getElementById ( "source" ).value = document.getElementById(setting).innerHTML;
+  if (setting.startsWith("Hex:")) {
+    document.getElementById ( "machine" ).value = document.getElementById(setting.substr(4)).innerHTML;
+    document.getElementById ( "source" ).value = "";
+  } else {
+    document.getElementById ( "source" ).value = document.getElementById(setting).innerHTML;
+  }
 }
 
 function update_rs_button() {
@@ -1731,7 +1769,8 @@ function beep() {
 <button type="button" onclick="beep(); on_doc_change();">Show</button>
 
 
-<p/><hr/><p/>
+<p/><hr/><p id="plog"></p>
+
 
 <!-- for some reason, there are at least 3 unmatched "center" tags above that should be closed! -->
 </center>
@@ -3095,6 +3134,307 @@ DONE_E: DATA F282  ; E!
      JP B1B
      JP 804
 </pre></td></tr>
+                                                             <!-- Attempt to use name to map keys -->
+<tr class="ex"><td class="ex" valign="top"><pre class="exhex" name="4,5,6,7,r,t,y,u,f,g,h,j,v,b,n,m" id="Tank Hex (not working yet)">
+ 12 30 76 fb 60 20 80 65 4f 00 66 00 13 84 00 ff
+ 00 00 00 01 00 0c 0a 00 19 02 04 06 08 02 02 03
+ 2c 00 0f 00 02 05 2e 08 00 00 02 05 00 00 00 00
+ 6e 00 6d a0 6a 08 69 06 68 04 67 02 66 19 64 10
+ 63 0c 62 00 61 06 a2 12 fa 55 23 d4 60 40 f0 15
+ f0 07 30 00 12 50 23 d4 23 0a 23 62 a2 12 f5 65
+ 22 ae 22 c6 22 ec 3f 01 23 14 3f 01 22 ec 3f 01
+ 22 ec 3f 01 22 7c 4f 01 13 66 12 62 a2 12 f5 65
+ 46 00 35 00 12 88 13 8c e7 a1 62 09 e8 a1 62 04
+ e9 a1 62 06 ea a1 62 01 42 00 00 ee 22 ae 81 20
+ 23 9a 23 ac 6c 01 62 00 6f 00 a2 12 f5 55 a3 ff
+ 41 01 60 00 41 04 60 13 41 06 60 0d 41 09 60 06
+ f0 1e d3 47 00 ee 60 05 e0 9e 00 ee 45 0f 00 ee
+ 65 0f 76 ff a2 12 f5 55 74 03 73 03 23 9a 23 9a
+ 23 9a a2 23 f5 55 a4 19 d3 41 00 ee a2 23 f5 65
+ 45 00 00 ee a4 19 d3 41 23 9a 6c 02 23 be 4b bb
+ 13 0a d3 41 a2 23 f5 55 00 ee 65 00 60 00 a2 17
+ f0 55 13 04 a2 1d f5 65 35 0f 13 44 a4 1a d3 45
+ 32 00 13 32 c1 03 a2 19 f1 1e f0 65 81 00 c2 0f
+ 72 01 23 9a a4 1a 6c 03 72 ff 6f 00 d3 45 a2 1d
+ f5 55 00 ee c4 07 a4 1f f4 1e f0 65 83 00 a4 27
+ f4 1e f0 65 84 00 a4 1a d3 45 60 20 f0 18 65 0f
+ 13 3e 65 00 13 3e 4c 01 12 02 4c 02 13 82 a2 23
+ f5 65 45 00 12 02 a4 19 d3 41 6f 00 d3 41 3f 01
+ 12 02 7e 0a 60 40 f0 18 00 e0 12 4a 00 e0 23 d4
+ 60 60 f0 18 13 94 6e 00 13 84 41 01 74 ff 41 04
+ 73 ff 41 06 73 01 41 09 74 01 00 ee 44 00 74 01
+ 43 00 73 01 43 38 73 ff 44 18 74 ff 00 ee 6b 00
+ 44 00 13 ce 43 00 13 ce 43 3f 13 ce 44 1f 6b bb
+ 6f 00 00 ee 63 08 64 08 a2 29 fe 33 f2 65 23 ec
+ 63 28 a2 29 f6 33 f2 65 23 f2 00 ee f0 29 d3 45
+ 73 06 f1 29 d3 45 73 06 f2 29 d3 45 00 ee 01 10
+ 54 7c 6c 7c 7c 44 7c 7c 6c 7c 54 10 00 fc 78 6e
+ 78 fc 00 3f 1e 76 1e 3f 00 80 a8 70 f8 70 a8 0b
+ 1b 28 38 30 20 10 00 00 00 00 08 1b 1b 1b 18 04
+</pre></td></tr>
+
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Tetris Merged">
+;===========================;
+;   Tetris  (not working)   ;
+;===========================;
+;   Disassembled from Hex   ;
+;   Data values from a run  ;
+;===========================;
+     LD I,2B4
+     CALL 3E6
+     CALL 2B6
+206: ADD V0,01
+     DRW V0,V1,1
+     SE V0,25
+     JP 206
+20E: ADD V1,FF
+     DRW V0,V1,1
+     LD V0,1A
+     DRW V0,V1,1
+     LD V0,25
+     SE V1,00
+     JP 20E
+21C: RND V4,70
+     SNE V4,70
+     JP 21C
+     RND V3,03
+     LD V0,1E
+     LD V1,03
+     CALL 25C
+22A: LD DT,V5
+     DRW V0,V1,4
+     SE VF,01
+     JP 23C
+     DRW V0,V1,4
+     ADD V1,FF
+     DRW V0,V1,4
+     CALL 340
+     JP 21C
+23C: SKNP V7
+     CALL 272
+     SKNP V8
+     CALL 284
+     SKNP V9
+     CALL 296
+     SKP V2
+     JP 250
+
+24C: DATA 6600  ; LD V6,00
+24E: DATA F615  ; LD DT,V6
+
+250: LD V6,DT
+     SE V6,00
+     JP 23C
+     DRW V0,V1,4
+     ADD V1,01
+     JP 22A
+25C: LD I,2C4
+     ADD I,V4
+     LD V6,00
+     SNE V3,01
+     LD V6,04
+     SNE V3,02
+     LD V6,08
+     SNE V3,03
+     LD V6,0C
+     ADD I,V6
+     RET
+272: DRW V0,V1,4
+     ADD V0,FF
+     CALL 334
+     SE VF,01
+     RET
+     DRW V0,V1,4
+     ADD V0,01
+     CALL 334
+     RET
+284: DRW V0,V1,4
+     ADD V0,01
+     CALL 334
+     SE VF,01
+     RET
+     DRW V0,V1,4
+     ADD V0,FF
+     CALL 334
+     RET
+296: DRW V0,V1,4
+     ADD V3,01
+     SNE V3,04
+     LD V3,00
+     CALL 25C
+     CALL 334
+     SE VF,01
+     RET
+     DRW V0,V1,4
+     ADD V3,FF
+     SNE V3,FF
+     LD V3,03
+     CALL 25C
+     CALL 334
+     RET
+
+2B4: DATA 8000
+
+2B6: LD V7,05
+     LD V8,06
+     LD V9,04
+     LD V1,1F
+     LD V5,10
+     LD V2,07
+     RET
+
+2C4: DATA 40E0
+2C6: DATA 0000
+2C8: DATA 40C0
+2CA: DATA 4000
+2CC: DATA 00E0
+2CE: DATA 4000
+2D0: DATA 4060
+2D2: DATA 4000
+2D4: DATA 4040
+2D6: DATA 6000
+2D8: DATA 20E0
+2DA: DATA 0000
+2DC: DATA C040
+2DE: DATA 4000
+2E0: DATA 00E0
+2E2: DATA 8000
+2E4: DATA 4040
+2E6: DATA C000
+2E8: DATA 00E0
+2EA: DATA 2000
+2EC: DATA 6040
+2EE: DATA 4000
+2F0: DATA 80E0
+2F2: DATA 0000
+2F4: DATA 40C0
+2F6: DATA 8000
+2F8: DATA C060
+2FA: DATA 0000
+2FC: DATA 40C0
+2FE: DATA 8000
+300: DATA C060
+302: DATA 0000
+304: DATA 80C0
+306: DATA 4000
+308: DATA 0060
+30A: DATA C000
+30C: DATA 80C0
+30E: DATA 4000
+310: DATA 0060
+312: DATA C000
+314: DATA C0C0
+316: DATA 0000
+318: DATA C0C0
+31A: DATA 0000
+31C: DATA C0C0
+31E: DATA 0000
+320: DATA C0C0
+322: DATA 0000
+324: DATA 4040
+326: DATA 4040
+328: DATA 00F0
+32A: DATA 0000
+32C: DATA 4040
+32E: DATA 4040
+330: DATA 00F0
+332: DATA 0000
+
+334: DRW V0,V1,4
+     LD V6,35
+338: ADD V6,FF
+     SE V6,00
+     JP 338
+     RET
+340: LD I,2B4
+     LD VC,V1
+     SE VC,1E
+     ADD VC,01
+     SE VC,1E
+     ADD VC,01
+     SE VC,1E
+     ADD VC,01
+350: CALL 35E
+     SNE VB,0A
+     CALL 372
+     SNE V1,VC
+     RET
+     ADD V1,01
+     JP 350
+35E: LD V0,1B
+     LD VB,00
+362: DRW V0,V1,1
+     SE VF,00
+     ADD VB,01
+     DRW V0,V1,1
+     ADD V0,01
+     SE V0,25
+     JP 362
+     RET
+372: LD V0,1B
+374: DRW V0,V1,1
+     ADD V0,01
+     SE V0,25
+     JP 374
+     LD VE,V1
+     LD VD,VE
+     ADD VE,FF
+382: LD V0,1B
+     LD VB,00
+386: DRW V0,VE,1
+     SE VF,00
+     JP 390
+     DRW V0,VE,1
+     JP 394
+390: DRW V0,VD,1
+     ADD VB,01
+394: ADD V0,01
+     SE V0,25
+     JP 386
+     SNE VB,00
+     JP 3A6
+     ADD VD,FF
+     ADD VE,FF
+     SE VD,01
+     JP 382
+3A6: CALL 3C0
+     SE VF,01
+     CALL 3C0
+     ADD VA,01
+     CALL 3C0
+     LD V0,VA
+     LD VD,07
+     AND V0,VD
+     SNE V0,04
+     ADD V5,FE
+     SNE V5,02
+     LD V5,04
+     RET
+3C0: LD I,700
+     LD [I],V2
+     LD I,804
+     LD B,VA
+     LD V2,[I]
+     LD F,V0
+     LD VD,32
+     LD VE,00
+     DRW VD,VE,5
+     ADD VD,05
+     LD F,V1
+     DRW VD,VE,5
+     ADD VD,05
+     LD F,V2
+     DRW VD,VE,5
+     LD I,700
+     LD V2,[I]
+     LD I,2B4
+     RET
+3E6: LD VA,00
+     LD V0,19
+     RET
+3EC: DATA 3723</pre></td></tr>
+
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Tetris (not working yet)">
 ;===========================;
@@ -3350,6 +3690,777 @@ DONE_E: DATA F282  ; E!
      RET
      SE V7,23
 </pre></td></tr>
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Tetris Hex (not working yet)">
+ a2 b4 23 e6 22 b6 70 01 d0 11 30 25 12 06 71 ff
+ d0 11 60 1a d0 11 60 25 31 00 12 0e c4 70 44 70
+ 12 1c c3 03 60 1e 61 03 22 5c f5 15 d0 14 3f 01
+ 12 3c d0 14 71 ff d0 14 23 40 12 1c e7 a1 22 72
+ e8 a1 22 84 e9 a1 22 96 e2 9e 12 50 66 00 f6 15
+ f6 07 36 00 12 3c d0 14 71 01 12 2a a2 c4 f4 1e
+ 66 00 43 01 66 04 43 02 66 08 43 03 66 0c f6 1e
+ 00 ee d0 14 70 ff 23 34 3f 01 00 ee d0 14 70 01
+ 23 34 00 ee d0 14 70 01 23 34 3f 01 00 ee d0 14
+ 70 ff 23 34 00 ee d0 14 73 01 43 04 63 00 22 5c
+ 23 34 3f 01 00 ee d0 14 73 ff 43 ff 63 03 22 5c
+ 23 34 00 ee 80 00 67 05 68 06 69 04 61 1f 65 10
+ 62 07 00 ee 40 e0 00 00 40 c0 40 00 00 e0 40 00
+ 40 60 40 00 40 40 60 00 20 e0 00 00 c0 40 40 00
+ 00 e0 80 00 40 40 c0 00 00 e0 20 00 60 40 40 00
+ 80 e0 00 00 40 c0 80 00 c0 60 00 00 40 c0 80 00
+ c0 60 00 00 80 c0 40 00 00 60 c0 00 80 c0 40 00
+ 00 60 c0 00 c0 c0 00 00 c0 c0 00 00 c0 c0 00 00
+ c0 c0 00 00 40 40 40 40 00 f0 00 00 40 40 40 40
+ 00 f0 00 00 d0 14 66 35 76 ff 36 00 13 38 00 ee
+ a2 b4 8c 10 3c 1e 7c 01 3c 1e 7c 01 3c 1e 7c 01
+ 23 5e 4b 0a 23 72 91 c0 00 ee 71 01 13 50 60 1b
+ 6b 00 d0 11 3f 00 7b 01 d0 11 70 01 30 25 13 62
+ 00 ee 60 1b d0 11 70 01 30 25 13 74 8e 10 8d e0
+ 7e ff 60 1b 6b 00 d0 e1 3f 00 13 90 d0 e1 13 94
+ d0 d1 7b 01 70 01 30 25 13 86 4b 00 13 a6 7d ff
+ 7e ff 3d 01 13 82 23 c0 3f 01 23 c0 7a 01 23 c0
+ 80 a0 6d 07 80 d2 40 04 75 fe 45 02 65 04 00 ee
+ a7 00 f2 55 a8 04 fa 33 f2 65 f0 29 6d 32 6e 00
+ dd e5 7d 05 f1 29 dd e5 7d 05 f2 29 dd e5 a7 00
+ f2 65 a2 b4 00 ee 6a 00 60 19 00 ee 37 23
+</pre></td></tr>
+
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Invaders (not working yet)">
+;===========================;
+;  Invaders  (not working)  ;
+;===========================;
+;   Disassembled from Hex   ;
+;===========================;
+200: JP 225
+     SE V3,V5
+     SNE V1,43
+206: SNE V5,20
+     SNE V9,4E
+     DATA 5641
+     SNE V4,45
+     DATA 5253
+     CALL 076
+     SE V0,2E
+     SE V9,20
+     SNE V2,79
+218: CALL 044
+     LD V1,76
+     LD V9,64
+     CALL 057
+     SNE V9,4E
+     DATA 5445
+     SE V2,V6
+     SYS 061
+     SYS 062
+     SYS 8A3
+     DRW V3,VD,0
+     JP 871
+230: SYS 8F2
+     JP E31
+     CALL 012
+     CALL D70
+     SYS 861
+     SYS 030
+     SNE V0,12
+     CALL D69
+     SYS 56C
+     JP 56E
+     SYS 023
+     LD V7,V6
+     SYS AF0
+     JP 5F0
+     SYS 730
+     SYS 012
+     SNE VB,23
+     SHL V7,V7
+     SYS 112
+     SNE V5,66
+     SYS 068
+     JP C69
+     SYS 06A
+     SYS 46B
+     SYS A6C
+262: SYS 46D
+     SE VC,6E
+     SYS F00
+     DATA E023
+26A: LD VB,23
+     SNE V7,FD
+     JP 560
+     SYS 4E0
+     DATA 9E12
+     ADD VD,23
+     LD VB,38
+     SYS 078
+     DATA FF23
+     LD VB,60
+     SYS 6E0
+     DATA 9E12
+     XOR VB,V2
+     LD VB,38
+     SE V9,78
+     SYS 123
+     LD VB,36
+     SYS 012
+     SNE VF,V6
+     SYS 5E0
+     DATA 9E12
+     DATA E966
+     SYS 165
+     JP B84
+     XOR V0,VA
+     RND VF,D4
+     DATA 51A3
+     RND VF,D4
+     DATA 5175
+     DATA FF35
+     DATA FF12
+2A8: LD I,D66
+     SYS 012
+     DATA E9D4
+     DATA 513F
+     SYS 112
+     DATA E9D4
+     DATA 5166
+     SYS 083
+     SNE V0,73
+     SYS 383
+     JP V0,562
+     DATA F883
+     CALL 262
+     SYS 833
+     SYS 012
+     RND V9,23
+     ADD V3,82
+     SYS 643
+     SYS 812
+     DRW V3,V3,3
+     JP 012
+     DRW V5,V2,3
+     ADD V3,82
+     SYS 633
+     JP 812
+     DRW VD,V2,3
+     ADD V3,82
+     SYS 643
+     CALL 012
+     DATA E733
+     CALL 812
+     DATA E923
+     ADD V3,3E
+     SYS 013
+     SYS 779
+     SYS 649
+     JP 869
+     SYS 06A
+     SYS 46B
+     SYS A6C
+     SYS 47D
+     DATA F46E
+     SYS F00
+2FE: DATA E023
+     SNE V7,23
+     LD VB,FD
+     JP 512
+     LD VF,F7
+     SYS 737
+     SYS 012
+     LD VF,FD
+     JP 523
+     SNE V7,8B
+     LD I,43B
+     JP 213
+     JP B7C
+     SYS 26A
+     DATA FC3B
+     SYS 213
+     CALL 37C
+     SYS 26A
+     SYS 423
+     SNE V7,3C
+     JP 812
+     LD VF,00
+     DATA E0A4
+     DRW V3,V6,0
+     JP 461
+     SYS 862
+     SYS FD0
+     JP F70
+     SYS 8F2
+     JP E30
+     CALL C13
+     SE V3,F0
+     SYS A00
+     DATA E0A6
+     DATA F4FE
+     LD V5,12
+     CALL 5A3
+     JP V0,7F9
+     JP E61
+     SYS 823
+     DATA 5F81
+     SYS 623
+     DATA 5F81
+     SYS 623
+     DATA 5F81
+     SYS 623
+     DATA 5F7B
+     DRW V0,V0,0
+     DATA EE80
+     DATA E080
+     JP 230
+     SYS 0DB
+     RND V6,7B
+     SYS C00
+     DATA EEA3
+     RND VF,60
+     JP CD8
+     SYS 400
+     DATA EE23
+     SNE V7,8E
+     CALL 323
+     SNE V7,60
+     SYS 5F0
+37C: JP 8F0
+     JP 5F0
+     SYS 730
+     SYS 013
+     ADD VF,00
+     DATA EE6A
+     SYS 08D
+     DATA E06B
+     SYS 4E9
+     LD I,112
+     DATA 57A6
+     SYS 2FD
+     JP EF0
+     LD V5,30
+     DATA FF13
+     LD I,56A
+     SYS 06B
+     SYS 46D
+     SYS 16E
+     SYS 113
+     SUB VD,VA
+     SYS 0F0
+     JP EDB
+     RND V6,7B
+     SYS 87D
+     SYS 17A
+     SYS 13A
+     SYS 713
+     LD VD,V0
+     DATA EE3C
+     ADD VE,FF
+     DATA FF99
+     DATA 997E
+     DATA FFFF
+     CALL 424
+     DATA E77E
+     DATA FF3C
+     SE VC,7E
+     DRW VB,V8,1
+     SNE V2,3C
+     ADD VE,FF
+     DRW VB,V1,0
+     SE V8,7C
+     DATA FE00
+     SYS 07F
+     SYS 03F
+     SYS 07F
+     SYS 000
+     SYS 001
+     SYS 101
+     SYS 303
+     SYS 303
+     SYS 000
+     SE VF,20
+     CALL 020
+     CALL 020
+     CALL 020
+     CALL 03F
+     SYS 808
+     DATA FF00
+     SYS 0FE
+     SYS 0FC
+     SYS 0FE
+     SYS 000
+     SYS 07E
+     SNE V2,42
+400: LD V2,62
+     LD V2,62
+404: SYS 000
+     DATA FF00
+     SYS 000
+     SYS 000
+     SYS 000
+     SYS 0FF
+     SYS 000
+     DATA FF00
+     ADD VD,00
+     SNE V1,7D
+     SYS 57D
+     ADD VD,00
+     SYS 0C2
+     RND V2,C6
+     SNE V4,6C
+     CALL 838
+424: SYS 000
+     DATA FF00
+     SYS 000
+     SYS 000
+     SYS 000
+     SYS 0FF
+     SYS 000
+     DATA FF00
+     DATA F710
+     JP 4F7
+     DATA F704
+     SYS 400
+     SYS 07C
+     SNE V4,FE
+     RND V2,C2
+     RND V2,C2
+     SYS 000
+     DATA FF00
+     SYS 000
+     SYS 000
+     SYS 000
+     SYS 0FF
+     SYS 000
+     DATA FF00
+     DATA EF20
+     CALL 8E8
+     DATA E82F
+     CALL F00
+     SYS 0F9
+     SUB V5,VC
+     RND V5,C5
+     RND V5,F9
+     SYS 000
+     DATA FF00
+     SYS 000
+     SYS 000
+     SYS 000
+     SYS 0FF
+     SYS 000
+     DATA FF00
+     JP V0,E00
+     CALL 030
+     CALL 0BE
+     JP V0,E00
+     SYS 0F7
+     SYS 4E7
+     SUB V5,V8
+     ADD V4,VF
+     SYS 000
+     DATA FF00
+     SYS 000
+     SYS 000
+     SYS 000
+     SYS 0FF
+     SYS 000
+     DATA FF00
+     SYS 07F
+     SYS 03F
+     SYS 07F
+     SYS 000
+     SYS 0EF
+     CALL 8EF
+     CLS
+     LD V0,6F
+     SYS 000
+     DATA FF00
+     SYS 000
+     SYS 000
+     SYS 000
+     SYS 0FF
+     SYS 000
+     DATA FF00
+     SYS 0FE
+     SYS 0FC
+     SYS 0FE
+     SYS 000
+     SYS 0C0
+     SYS 0C0
+     RND V0,C0
+     RND V0,C0
+     SYS 000
+     DATA FC04
+     SYS 404
+     SYS 404
+     SYS 404
+     SYS 4FC
+     JP 010
+     DATA FFF9
+     DATA 81B9
+     DATA 8B9A
+     DATA 9AFA
+     SYS 0FA
+     DATA 8A9A
+     DATA 9A9B
+4E0: DATA 99F8
+     DATA E625
+     CALL 5F4
+     SE V4,34
+     SE V4,00
+     JP 714
+     SE V4,37
+     SE V6,26
+     RND V7,DF
+     SE V0,V5
+     DATA 5CD8
+     DRW V8,VD,F
+     SYS 0DF
+     JP 11F
+4FC: JP 21B
+     JP 9D9
+     ADD VC,44
+     DATA FE86
+     SHR V6,V8
+     DATA FC84
+     DATA FE82
+     SHL V2,VF
+     DATA FE80
+     RND V0,C0
+     RND V0,FE
+512: DATA FC82
+     RND V2,C2
+     RND V2,FC
+     DATA FE80
+     DATA F8C0
+     RND V0,FE
+     DATA FE80
+     DATA F0C0
+     RND V0,C0
+     DATA FE80
+     JP V0,E86
+     SHL V6,VF
+     SHR V6,V8
+     DATA FE86
+     SHR V6,V8
+     JP 010
+     JP 010
+     JP 010
+     JP 818
+     JP 848
+     SNE V8,78
+     SNE VC,V9
+     JP V0,0C0
+     JP V0,09C
+     LD V0,V8
+     RND V0,C0
+     RND V0,FE
+     DATA EE92
+     DATA 9286
+     SHR V6,V8
+     DATA FE82
+     SHR V6,V8
+     SHR V6,V8
+     ADD VC,82
+     SHR V6,V8
+     DATA 867C
+     DATA FE82
+     DATA FEC0
+     RND V0,C0
+560: ADD VC,82
+562: RND V2,CA
+     RND V4,7A
+     DATA FE86
+     DATA FE90
+56A: DATA 9C84
+56C: DATA FEC0
+56E: DATA FE02
+     SYS 2FE
+     DATA FE10
+     SE V0,30
+     SE V0,30
+     AND V2,V8
+     RND V2,C2
+     RND V2,FE
+     AND V2,V8
+     SHL V2,VE
+     SE V8,10
+     SHR V6,V8
+     DATA 9692
+     DATA 92EE
+     ADD V2,V4
+     SE V8,38
+     SNE V4,82
+     AND V2,V8
+     DATA FE30
+     SE V0,30
+     DATA FE02
+     JP EF0
+     SHL V0,VF
+     SYS 000
+     SYS 000
+     SYS 606
+     SYS 000
+     SYS 060
+     LD V0,C0
+     SYS 000
+     SYS 000
+     SYS 000
+     JP 818
+     JP 818
+     SYS 018
+     ADD VC,C6
+     SYS C18
+     SYS 018
+     SYS 000
+     DATA FEFE
+     SYS 000
+     DATA FE82
+     SHR V6,V8
+     SHL V6,VF
+     SYS 808
+     SYS 818
+     JP 818
+     DATA FE02
+     DATA FEC0
+     RND V0,FE
+     DATA FE02
+     JP E06
+     SYS 6FE
+     ADD V4,VC
+     RND V4,FE
+     SYS 404
+     DATA FE80
+5E0: DATA FE06
+     SYS 6FE
+     RND V0,C0
+     RND V0,FE
+     SHL V2,VF
+     DATA FE02
+     SYS 206
+     SYS 606
+5F0: ADD VC,44
+     DATA FE86
+5F4: SHL V6,VF
+     DATA FE82
+     DATA FE06
+     SYS 606
+     SNE V4,FE
+     SNE V4,44
+     DATA FE44
+     LD I,8A8
+     LD I,8A8
+606: LD I,8A8
+     LD I,86C
+     SE VA,V0
+     SYS C18
+     LD I,830
+     SNE VE,7E
+     SYS 012
+     JP 866
+     LD VC,A8
+     DATA 5A66
+     DATA 5424
+     LD V6,00
+     SNE V8,48
+     JP 812
+     LD I,806
+     DATA 90A8
+     JP 200
+     ADD VE,30
+     JP 2A8
+     LD V4,V3
+     SNE VE,72
+     JP 866
+     LD I,8A8
+     LD I,8A8
+     LD I,8A8
+     DATA 9054
+     ADD V8,A8
+     SNE V8,78
+     LD VC,72
+     LD I,812
+     JP 86C
+     ADD V2,66
+     SE V4,V9
+     LD I,872
+     CALL A18
+     LD I,830
+     SNE VE,7E
+     SYS 012
+     JP 866
+     LD VC,A8
+     ADD V2,54
+     LD I,85A
+     LD V6,18
+     ADD VE,18
+     SNE VE,72
+     LD I,872
+     CALL A18
+     SE V0,66
+     LD I,830
+     SNE VE,7E
+     SYS 06C
+     SE V0,54
+     SNE VE,9C
+     LD I,8A8
+     LD I,8A8
+     LD I,8A8
+     LD I,848
+     DATA 547E
+     JP 8A8
+     DATA 9054
+     ADD V8,66
+     LD I,86C
+     CALL A30
+     DATA 5AA8
+     LD V4,V3
+     ADD V2,2A
+     LD I,8D8
+     LD I,800
+     SNE VE,12
+     LD I,8E4
+     LD I,2A8
+     SYS 04E
+     JP 2A8
+     LD VC,2A
+     DATA 5454
+     ADD V2,A8
+     LD V4,V3
+     ADD V2,2A
+     LD I,8DE
+     DATA 9CA8
+     ADD V2,2A
+     JP 8A8
+     SYS C54
+     SNE V8,5A
+     ADD V8,72
+     JP 866
+     LD I,872
+     JP 842
+     SNE V2,6C
+     LD I,872
+     CALL A00
+     ADD V2,A8
+     ADD V2,2A
+     JP 8A8
+     SE V0,4E
+     ADD VE,00
+     JP 218
+     LD V6,6C
+     LD I,830
+     SNE VE,0C
+     LD V6,18
+     SYS 06C
+     JP 8A8
+     ADD V2,2A
+     JP 830
+     LD V6,A8
+     JP E54
+     LD V6,0C
+     JP 89C
+6E0: LD I,824
+     DATA 5454
+     JP 2A8
+     SNE V2,78
+     SYS C3C
+     LD I,8AE
+     LD I,8A8
+     LD I,8A8
+     LD I,8A8
+     LD I,8FF
+     SYS 000
+     SYS 000
+     SYS 000
+     SYS 000
+     SYS 000
+6FE: SYS 000
+     SYS 000
+     SYS 000
+</pre></td></tr>
+
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Invaders Hex (not working yet)">
+ 12 25 53 50 41 43 45 20 49 4e 56 41 44 45 52 53
+ 20 76 30 2e 39 20 42 79 20 44 61 76 69 64 20 57
+ 49 4e 54 45 52 60 00 61 00 62 08 a3 d3 d0 18 71
+ 08 f2 1e 31 20 12 2d 70 08 61 00 30 40 12 2d 69
+ 05 6c 15 6e 00 23 87 60 0a f0 15 f0 07 30 00 12
+ 4b 23 87 7e 01 12 45 66 00 68 1c 69 00 6a 04 6b
+ 0a 6c 04 6d 3c 6e 0f 00 e0 23 6b 23 47 fd 15 60
+ 04 e0 9e 12 7d 23 6b 38 00 78 ff 23 6b 60 06 e0
+ 9e 12 8b 23 6b 38 39 78 01 23 6b 36 00 12 9f 60
+ 05 e0 9e 12 e9 66 01 65 1b 84 80 a3 cf d4 51 a3
+ cf d4 51 75 ff 35 ff 12 ad 66 00 12 e9 d4 51 3f
+ 01 12 e9 d4 51 66 00 83 40 73 03 83 b5 62 f8 83
+ 22 62 08 33 00 12 c9 23 73 82 06 43 08 12 d3 33
+ 10 12 d5 23 73 82 06 33 18 12 dd 23 73 82 06 43
+ 20 12 e7 33 28 12 e9 23 73 3e 00 13 07 79 06 49
+ 18 69 00 6a 04 6b 0a 6c 04 7d f4 6e 0f 00 e0 23
+ 47 23 6b fd 15 12 6f f7 07 37 00 12 6f fd 15 23
+ 47 8b a4 3b 12 13 1b 7c 02 6a fc 3b 02 13 23 7c
+ 02 6a 04 23 47 3c 18 12 6f 00 e0 a4 d3 60 14 61
+ 08 62 0f d0 1f 70 08 f2 1e 30 2c 13 33 f0 0a 00
+ e0 a6 f4 fe 65 12 25 a3 b7 f9 1e 61 08 23 5f 81
+ 06 23 5f 81 06 23 5f 81 06 23 5f 7b d0 00 ee 80
+ e0 80 12 30 00 db c6 7b 0c 00 ee a3 cf 60 1c d8
+ 04 00 ee 23 47 8e 23 23 47 60 05 f0 18 f0 15 f0
+ 07 30 00 13 7f 00 ee 6a 00 8d e0 6b 04 e9 a1 12
+ 57 a6 02 fd 1e f0 65 30 ff 13 a5 6a 00 6b 04 6d
+ 01 6e 01 13 8d a5 00 f0 1e db c6 7b 08 7d 01 7a
+ 01 3a 07 13 8d 00 ee 3c 7e ff ff 99 99 7e ff ff
+ 24 24 e7 7e ff 3c 3c 7e db 81 42 3c 7e ff db 10
+ 38 7c fe 00 00 7f 00 3f 00 7f 00 00 00 01 01 01
+ 03 03 03 03 00 00 3f 20 20 20 20 20 20 20 20 3f
+ 08 08 ff 00 00 fe 00 fc 00 fe 00 00 00 7e 42 42
+ 62 62 62 62 00 00 ff 00 00 00 00 00 00 00 00 ff
+ 00 00 ff 00 7d 00 41 7d 05 7d 7d 00 00 c2 c2 c6
+ 44 6c 28 38 00 00 ff 00 00 00 00 00 00 00 00 ff
+ 00 00 ff 00 f7 10 14 f7 f7 04 04 00 00 7c 44 fe
+ c2 c2 c2 c2 00 00 ff 00 00 00 00 00 00 00 00 ff
+ 00 00 ff 00 ef 20 28 e8 e8 2f 2f 00 00 f9 85 c5
+ c5 c5 c5 f9 00 00 ff 00 00 00 00 00 00 00 00 ff
+ 00 00 ff 00 be 00 20 30 20 be be 00 00 f7 04 e7
+ 85 85 84 f4 00 00 ff 00 00 00 00 00 00 00 00 ff
+ 00 00 ff 00 00 7f 00 3f 00 7f 00 00 00 ef 28 ef
+ 00 e0 60 6f 00 00 ff 00 00 00 00 00 00 00 00 ff
+ 00 00 ff 00 00 fe 00 fc 00 fe 00 00 00 c0 00 c0
+ c0 c0 c0 c0 00 00 fc 04 04 04 04 04 04 04 04 fc
+ 10 10 ff f9 81 b9 8b 9a 9a fa 00 fa 8a 9a 9a 9b
+ 99 f8 e6 25 25 f4 34 34 34 00 17 14 34 37 36 26
+ c7 df 50 50 5c d8 d8 df 00 df 11 1f 12 1b 19 d9
+ 7c 44 fe 86 86 86 fc 84 fe 82 82 fe fe 80 c0 c0
+ c0 fe fc 82 c2 c2 c2 fc fe 80 f8 c0 c0 fe fe 80
+ f0 c0 c0 c0 fe 80 be 86 86 fe 86 86 fe 86 86 86
+ 10 10 10 10 10 10 18 18 18 48 48 78 9c 90 b0 c0
+ b0 9c 80 80 c0 c0 c0 fe ee 92 92 86 86 86 fe 82
+ 86 86 86 86 7c 82 86 86 86 7c fe 82 fe c0 c0 c0
+ 7c 82 c2 ca c4 7a fe 86 fe 90 9c 84 fe c0 fe 02
+ 02 fe fe 10 30 30 30 30 82 82 c2 c2 c2 fe 82 82
+ 82 ee 38 10 86 86 96 92 92 ee 82 44 38 38 44 82
+ 82 82 fe 30 30 30 fe 02 1e f0 80 fe 00 00 00 00
+ 06 06 00 00 00 60 60 c0 00 00 00 00 00 00 18 18
+ 18 18 00 18 7c c6 0c 18 00 18 00 00 fe fe 00 00
+ fe 82 86 86 86 fe 08 08 08 18 18 18 fe 02 fe c0
+ c0 fe fe 02 1e 06 06 fe 84 c4 c4 fe 04 04 fe 80
+ fe 06 06 fe c0 c0 c0 fe 82 fe fe 02 02 06 06 06
+ 7c 44 fe 86 86 fe fe 82 fe 06 06 06 44 fe 44 44
+ fe 44 a8 a8 a8 a8 a8 a8 a8 6c 5a 00 0c 18 a8 30
+ 4e 7e 00 12 18 66 6c a8 5a 66 54 24 66 00 48 48
+ 18 12 a8 06 90 a8 12 00 7e 30 12 a8 84 30 4e 72
+ 18 66 a8 a8 a8 a8 a8 a8 90 54 78 a8 48 78 6c 72
+ a8 12 18 6c 72 66 54 90 a8 72 2a 18 a8 30 4e 7e
+ 00 12 18 66 6c a8 72 54 a8 5a 66 18 7e 18 4e 72
+ a8 72 2a 18 30 66 a8 30 4e 7e 00 6c 30 54 4e 9c
+ a8 a8 a8 a8 a8 a8 a8 48 54 7e 18 a8 90 54 78 66
+ a8 6c 2a 30 5a a8 84 30 72 2a a8 d8 a8 00 4e 12
+ a8 e4 a2 a8 00 4e 12 a8 6c 2a 54 54 72 a8 84 30
+ 72 2a a8 de 9c a8 72 2a 18 a8 0c 54 48 5a 78 72
+ 18 66 a8 72 18 42 42 6c a8 72 2a 00 72 a8 72 2a
+ 18 a8 30 4e 7e 00 12 18 66 6c a8 30 4e 0c 66 18
+ 00 6c 18 a8 72 2a 18 30 66 a8 1e 54 66 0c 18 9c
+ a8 24 54 54 12 a8 42 78 0c 3c a8 ae a8 a8 a8 a8
+ a8 a8 a8 ff 00 00 00 00 00 00 00 00 00 00 00 00
+ 00 00 00
+</pre></td></tr>
+
 
 </table>
 </td></tr>
