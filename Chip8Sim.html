@@ -1966,11 +1966,16 @@ Fx65 - LD Vx, [I]         &#x2705;? Restore Registers: Read registers V0 through
 
 The common ".ch8" files used with CHIP-8 contain binary data which is more difficult to handle through a typical
 web browser interface. For that reason, this program uses hexadecimal (hex) representations of binary files so they
-can be easily copied and pasted. So to run a binary ".ch8" file, it must be converted to hex first. There are many
+can be easily copied and pasted.<br/>
+<br/>
+In order to run a binary ".ch8" file, it must be converted to hex first. There are many
 programs that can do this conversion. One of the most common is the UNIX/Linux "od" (octal dump) command. You can
 use "od" to convert a binary ".ch8" file to a hexadecimal file with:<br/>
 <br/>
-$ od -v -tx1 -An filename<br/>
+<tt>
+$ od -v -tx1 -An filename
+</tt>
+<br/>
 <br/>
 For example:<br/>
 <br/>
@@ -1982,10 +1987,10 @@ a2 1e c2 01 32 01 a2 1a d0 14 70 04 30 40 12 00<br/>
 </tt>
 <br/>
 <br/>
-That output can be copied and pasted into the "Machine Code" window of this CHIP-8 simulator to run.
+That output can be copied and pasted into the "<b>Machine Code</b>" window of this CHIP-8 simulator to run.
 <p>
-Alternatively, you can use a base 64 conversion program (such as "<b>base64</b>" in *nix) to convert between binary and base64.
-You can then use the tool below to convert between base64 and hex.
+Alternatively, you can use a base 64 conversion program (such as "<b>base64</b>" in *nix) to convert
+between binary and base64. You can then use the tool below to convert between base64 and hex.
 
 For example:<br/>
 <br/>
@@ -1995,93 +2000,29 @@ oh7CATIBohrQFHAEMEASAGAAcQQxIBIAEhiAQCAQIECAEA==
 </tt>
 <br/>
 <br/>
-That output can be copied and pasted into the "Base64 data" window below and converted to hex.
-The hex can then be copied into the "Machine Code" window of this CHIP-8 simulator to run. The
-process can be reversed by placing hex code into the "Hex data" window below and converting it
-to Base64. Then the Base64 can be copied to a file (such as "prog.b64") and converted to binary with:<br/>
+That output can be copied and pasted into the "<b>Base64 data</b>" window below and converted to hex with the right arrow button.
+The hex can then be copied into the "<b>Machine Code</b>" window of this CHIP-8 simulator to run. The
+process can be reversed by placing hex code into the "<b>Hex data</b>" window below and converting it
+to Base64 with the left arrow button. Then the Base64 can be copied to a file (such as "prog.b64")
+and converted to binary with:<br/>
 <br/>
 <tt>
 $ base64 -d prog.b64 > prog.ch8<br/>
 </tt>
 </p>
+<hr/>
 
 <script>
-/*
-Base64="oh7CATIBohrQFHAEMEASAGAAcQQxIBIAEhiAQCAQIECAEA=="
-o=101000
-h=100001
-7=111011
-C=000010
-A=000000
-T=010011
-I=001000
-B=000001
-o=101000
-h=100001
-r=101011
-Q=010000
-
-101000 100001 111011 000010 000000 010011 001000 000001 101000 100001 101011 010000
-
-10100010 00011110 11000010 00000001 00110010 00000001 10100010 00011010 11010000
-  A  2     1  E     C  2     0  1     3   2    0  1     A  2     1  A     D  0
-
-i=0
-  send 101000
-  keep 10 00011110 11000010 00000001 00110010 00000001 10100010 00011010 11010000
-
-i=1
-  send 10 0001
-  keep 1110 11000010 00000001 00110010 00000001 10100010 00011010 11010000
-
-i=2
-  send 1110 11
-  keep 000010 00000001 00110010 00000001 10100010 00011010 11010000
-
-i=3
-  send 000010
-  keep 00000001 00110010 00000001 10100010 00011010 11010000
-
-i=4
-  send 000000
-  keep 01 00110010 00000001 10100010 00011010 11010000
-
-i=5
-  send 01 0011
-  keep 0010 00000001 10100010 00011010 11010000
-
-i=6
-  send 0010 00
-  keep 000001 10100010 00011010 11010000
-
-i=7
-  send 000001
-  keep 10100010 00011010 11010000
-
-i=8
-  send 101000
-  keep 10 00011010 11010000
-
-i=9
-  send 10 0001
-  keep 1010 11010000
-
-i=10
-  send 1010 11
-  keep 010000
-*/
 b64_code = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 function convert_b64_to_hex() {
   b64txt = document.getElementById("base64data").value.trim();
   hexwin = document.getElementById("hexdata");
-  console.log ( "Convert " + b64txt + " to hex" );
   part = 0;
   val = 0;
   empty = 0;
   decoded = "";
   for (i=0; i<b64txt.length; i++) {
     bits = b64_code.indexOf(b64txt[i]);
-    console.log ( "i=" + i + ", char=" + b64txt[i] + ", bits = 0x" + hex2(bits) );
     if (bits >= 0) {
       val = (val << 6) | (bits & 0x3F);
       part += 1;
@@ -2092,9 +2033,7 @@ function convert_b64_to_hex() {
     } else {
       // Ignore any other characters
     }
-    console.log ( "val = " + hex6(val) );
     if (part >= 4) {
-      console.log ( "appending " + hex6(val) );
       decoded += hex6(val);
       val = 0;
       part = 0;
@@ -2107,7 +2046,6 @@ hex_code = "0123456789ABCDEFabcdef";
 function convert_hex_to_b64() {
   hextxt = document.getElementById("hexdata").value.trim();
   b64win = document.getElementById("base64data");
-  console.log ( "Convert " + hextxt );
   val = 0;
   bits_in_val = 0;
   encoded = "";
@@ -2117,19 +2055,17 @@ function convert_hex_to_b64() {
       // This is a legitimate hex character
       val = (val << 4) | parseInt ( c, 16 );
       bits_in_val += 4;
-      console.log ( hex(val & 0xffffff) );
       if (bits_in_val >= 6) {
-        encoded += b64_code [ ( val >> (bits_in_val-6) ) & 0x3F ];
-        val = val ^ ( ( val >> (bits_in_val-6)) << (bits_in_val-6) );
+        bits_remaining = bits_in_val - 6;
+        encoded += b64_code [ ( val >> bits_remaining ) & 0x3F ];
+        // Clear encoded bits while preserving non-encoded bits
+        val = val ^ ( ( val >> bits_remaining) << bits_remaining );
         bits_in_val = bits_in_val - 6;
       }
-      console.log ( encoded );
     }
   }
-  console.log ( bits_in_val + " bits remaining = " + hex(val) );
   if (bits_in_val == 2) encoded += b64_code[val<<4] + "==";
   if (bits_in_val == 4) encoded += b64_code[val<<2] + "=";
-  console.log ( encoded );
   b64win.value = encoded;
 }
 </script>
@@ -2139,10 +2075,10 @@ function convert_hex_to_b64() {
 <table>
 <tr>
 <td>
-Base64 data:<br/>
+<b>Base64 data:</b><br/>
 <textarea id="base64data" rows="10" cols="40"
    autocomplete="off" autocorrect="off"
-   autocapitalize="off" spellcheck="false">oh7CATIBohrQFHAEMEASAGAAcQQxIBIAEhiAQCAQIECAEA==</textarea>
+   autocapitalize="off" spellcheck="false"></textarea>
 </center>
 </td>
 <td>
@@ -2151,10 +2087,10 @@ Base64 data:<br/>
 <input type="button" id="hextob64" value="<-" onclick="convert_hex_to_b64()"></input>
 </td>
 <td>
-Hex data:<br/>
+<b>Hex data:</b><br/>
 <textarea id="hexdata" rows="10" cols="40"
    autocomplete="off" autocorrect="off"
-   autocapitalize="off" spellcheck="false">A21EC2013201A21AD014700430401200600071043120120012188040201020408010</textarea>
+   autocapitalize="off" spellcheck="false"></textarea>
 </center>
 </td>
 </tr>
@@ -2163,31 +2099,7 @@ Hex data:<br/>
 </p>
 
 <hr/>
-<pre>
-a2 1e c2 01 32 01 a2 1a d0 14 70 04 30 40 12 00
-60 00 71 04 31 20 12 00 12 18 80 40 20 10 20 40
-80 10
-</pre> 
-<table border="1">
-<tr><td>b64_01.txt</td><td>og==</td></tr>
-<tr><td>b64_02.txt</td><td>oh4=</td></tr>
-<tr><td>b64_03.txt</td><td>oh7C</td></tr>
-<tr><td>b64_04.txt</td><td>oh7CAQ==</td></tr>
-<tr><td>b64_05.txt</td><td>oh7CATI=</td></tr>
-<tr><td>b64_06.txt</td><td>oh7CATIB</td></tr>
-<tr><td>b64_07.txt</td><td>oh7CATIBog==</td></tr>
-<tr><td>b64_08.txt</td><td>oh7CATIBoho=</td></tr>
-<tr><td>b64_09.txt</td><td>oh7CATIBohrQ</td></tr>
-<tr><td>b64_10.txt</td><td>oh7CATIBohrQFA==</td></tr>
-<tr><td>b64_11.txt</td><td>oh7CATIBohrQFHA=</td></tr>
-<tr><td>b64_12.txt</td><td>oh7CATIBohrQFHAE</td></tr>
-<tr><td>b64_13.txt</td><td>oh7CATIBohrQFHAEMA==</td></tr>
-</td>
-</tr>
-</table>
-
 </div>
-
 
 
 
