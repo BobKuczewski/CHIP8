@@ -1412,7 +1412,7 @@ function reload_and_wait() {
   stop_running = true;
   running = false;
   reset();
-  if (document.getElementById ( "source" ).value.trim.length > 0) {
+  if (document.getElementById ( "source" ).value.trim().length > 0) {
     assemble();
   }
   load();
@@ -1768,6 +1768,7 @@ function beep() {
 <select id="show_help" onchange="on_doc_change()">
 <option value="none" selected>-- Select --</option>
 <option value="introduction" selected>Introduction</option>
+<option value="graphics_screen" selected>Graphics Screen</option>
 <option value="instruction_set">Instruction Set</option>
 <option value="hex_to_binary">Hex to Binary</option>
 <option value="examples">Examples</option>
@@ -1793,8 +1794,7 @@ function beep() {
 This Javascript/HTML program implements a virtual machine and development environment for the CHIP-8 programming language.
 <br></br>
 CHIP-8 source code can be entered in the <b>Source Code</b> text area. It can then be assembled into the
-<b>Machine Code</b> text area. From there it can be loaded into the <b>CHIP-8 Virtual Machine</b> and run. The CHIP-8
-graphics screen is the program's primary output device and it is 64 x 32 (or 40 x 20 in hex).
+<b>Machine Code</b> text area. From there it can be loaded into the <b>CHIP-8 Virtual Machine</b> and run.
 <br></br>
 <center><h3>Quick Start</h3></center>
 The <b>CHIP-8 Development Environment</b> will generally start with a program already in the <b>Source Code</b> text area.
@@ -1874,6 +1874,23 @@ Any other number of digits (too many or too few) will cause assembly problems.
 
 <hr/>
 
+</div>
+
+<div id="graphics_screen" hidden>
+<center><h3>Graphics Screen</h3></center>
+
+The CHIP-8 graphics screen is the program's primary output device and it is 64 pixels wide x 32 pixels tall (or 40 x 20 in hex).
+<br></br>
+Graphics are drawn to the screen using <b>sprites</b>. A sprite is always 8 pixels wide and between 0 and 15 pixels tall.
+Sprites are referenced through the special <b>I</b> register which points to a section of memory containing the sprite's data.
+The first 8 bits of the sprite's data draw the top row of the sprite (1 bit per pixel for colors black and white).
+The second 8 bits of the sprite's data draw the second row, and so on.
+<br></br>
+The <b>Draw</b> command specifies the 2 registers used
+to hold the x and y locations where the sprite's upper left pixel will be drawn. The Draw command also specifies the
+number of rows of the sprite to actually draw (from 0 to 15). The drawing mode is exclusive or. In other words, if the
+newly drawn pixel value differs from the previous pixel value, then the pixel will be 1 (white). Otherwise, if the
+newly drawn pixel value is the same as the previous pixel value, then the pixel will be 0 (black).
 </div>
 
 
