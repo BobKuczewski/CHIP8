@@ -1170,7 +1170,7 @@ function step1() {
     // limited_alert ( "The SKP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     // console.log ( "The SKP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not fully implemented" );
     x = (instruction&0x0F00)>>8;
-    if (keydown[V[x]]!=0) {
+    if (keydown[V[x]&0x0F]!=0) {
       PC = PC + 4;
     } else {
       PC = PC + 2;
@@ -1181,7 +1181,7 @@ function step1() {
     // console.log ( "The SKNP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not fully implemented" );
     // Always skip for now
     x = (instruction&0x0F00)>>8;
-    if (keydown[V[x]]==0) {
+    if (keydown[V[x]&0x0F]==0) {
       PC = PC + 4;
     } else {
       PC = PC + 2;
