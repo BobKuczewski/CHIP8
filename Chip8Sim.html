@@ -355,7 +355,7 @@ function bd(n,v) {
   }
 }
 
-key_remapping = true;
+key_remapping = false;
 key_remap = []
 
 function kd(n,v) {
@@ -375,11 +375,27 @@ function kd(n,v) {
 }
 
 function handle_keydn(event) {
-  kd(Number(event.key),1);  // Call with key down (1)
+  // console.log ( "Key down is " + event.key );
+  k = event.key.toUpperCase();
+  kv = 0;
+  if ('abcdefABCDEF'.indexOf(k) >= 0) {
+    kv = 9 + (k.codePointAt() % 16);
+  } else {
+    kv = Number(k);
+  }
+  kd(kv,1);  // Call with key down (1)
 }
 
 function handle_keyup(event) {
-  kd(Number(event.key),0);  // Call with key up (0)
+  // console.log ( "Key up is " + event.key );
+  k = event.key.toUpperCase();
+  kv = 0;
+  if ('abcdefABCDEF'.indexOf(k) >= 0) {
+    kv = 9 + (k.codePointAt() % 16);
+  } else {
+    kv = Number(k);
+  }
+  kd(kv,0);  // Call with key up (0)
 }
 
 function showkeys() {
@@ -1186,7 +1202,7 @@ function step1() {
     // limited_alert ( "The SKP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     // console.log ( "The SKP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not fully implemented" );
     x = (instruction&0x0F00)>>8;
-    if (keydown[x]!=0) {
+    if (keydown[V[x]]!=0) {
       PC = PC + 4;
     } else {
       PC = PC + 2;
@@ -1197,7 +1213,7 @@ function step1() {
     // console.log ( "The SKNP Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not fully implemented" );
     // Always skip for now
     x = (instruction&0x0F00)>>8;
-    if (keydown[x]==0) {
+    if (keydown[V[x]]==0) {
       PC = PC + 4;
     } else {
       PC = PC + 2;
