@@ -1229,9 +1229,9 @@ function step1() {
     x1 = Math.floor((x-(100*x2))/10);
     x0 = x % 10;
     console.log ( "LD B,Vx with x=" + x + ": " + x2 + " " + x1 + " " + x0 );
-    mem[I++] = x2;
-    mem[I++] = x1;
-    mem[I++] = x0;
+    mem[I+0] = x2;
+    mem[I+1] = x1;
+    mem[I+2] = x0;
     // limited_alert ( "The LD B,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     // console.log ( "The LD B,Vx instruction (" + hex4(instruction) + ") at " + hex4(PC) + " is not implemented" );
     PC = PC + 2;
