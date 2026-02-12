@@ -1616,13 +1616,13 @@ function beep() {
           <td>
           <center>
             <input type="button" name="memup"  value="⇧"  onclick="beep(); mem_top = 0x0000; update_display();"></input></br>
-            <input type="button" name="memup"  value="↟"  onclick="beep(); mem_top = Math.max(0,mem_top-1024); update_display();"></input></br>
+            <input type="button" name="memup"  value="↟"  onclick="beep(); mem_top = Math.max(0,mem_top-256); update_display();"></input></br>
             <input type="button" name="memup"  value="↟"  onclick="beep(); mem_top = Math.max(0,mem_top-16); update_display();"></input></br>
             <input type="button" name="memup"  value="↑"  onclick="beep(); mem_top = Math.max(0,mem_top-2); update_display();"></input></br>
             <input type="button" name="memup"  value="⌂"  onclick="beep(); mem_top = 0x0200; update_display();"></input></br>
             <input type="button" name="memdn"  value="↓"  onclick="beep(); mem_top = Math.min(0xffe0,mem_top+2); update_display();"></input></br>
             <input type="button" name="memdn"  value="⇓"  onclick="beep(); mem_top = Math.min(0xffe0,mem_top+16); update_display();"></input></br>
-            <input type="button" name="memdn"  value="⇓"  onclick="beep(); mem_top = Math.min(0xffe0,mem_top+1024); update_display();"></input></br>
+            <input type="button" name="memdn"  value="⇓"  onclick="beep(); mem_top = Math.min(0xffe0,mem_top+256); update_display();"></input></br>
             <input type="button" name="memdn"  value="⇩"  onclick="beep(); mem_top = 0xffe0; update_display();"></input></br>
           </center>
           </td>
