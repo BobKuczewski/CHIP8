@@ -709,6 +709,9 @@ function assemble() {
   document.getElementById ( "machine" ).value = assemble_text ( srctxt );
 }
 
+hex_lines = null;
+instr_types = null;
+
 function get_machine_lines ( text_in ) {
   // Normalize line endings and remove empty lines
   text = replaceAll( text_in, "\r", "\n");
@@ -726,12 +729,12 @@ function get_machine_lines ( text_in ) {
     text = replaceAll(text, " ", "");
   }
   // Split by 4 digits per instruction
-  lines = [];
+  hex_lines = [];
   while (text.length > 0) {
-    lines.push ( text.slice(0,4) );
+    hex_lines.push ( text.slice(0,4) );
     text = text.slice(4)
   }
-  return ( lines );
+  return ( hex_lines );
 }
 
 function disassemble_line ( line ) {
@@ -848,46 +851,102 @@ function disassemble_line ( line ) {
   return ( result );
 }
 
+function trace_from ( start_index ) {
+  // console.log ( "trace_from ( " + start_index + " )" );
+  if (start_index < hex_lines.length) {
+    // Check to ensure that this instruction hasn't already been traced
+    if (instr_types[start_index] != "c") {
+      // Always assume this is code, and mark as such
+      instr_types[start_index] = "c";
+      // Get the instruction
+      instr = hex_lines[start_index].toUpperCase();
+      // Get the opcode
+      opcode = instr.substr(0,1);
+      if (instr == '00EE') {
+        console.log ( "RET " + instr.substr(1) );
+      } else if (opcode == '1') {
+        addr = parseInt ( instr.substr(1), 16 );
+        console.log ( "JP " + instr.substr(1) + " = " + addr );
+        trace_from ( addr - 0x200 );
+      } else if (opcode == '2') {
+        addr = parseInt ( instr.substr(1), 16 );
+        console.log ( "CALL " + instr.substr(1) + " = " + addr );
+        trace_from ( addr - 0x200 );
+      } else if (opcode == '3') {
+        console.log ( "SE " + instr.substr(1) );
+        trace_from ( start_index + 1 );
+        trace_from ( start_index + 2 );
+      } else if (opcode == '4') {
+        console.log ( "SNE " + instr.substr(1) );
+        trace_from ( start_index + 1 );
+        trace_from ( start_index + 2 );
+      } else if (opcode == '5') {
+        console.log ( "SE " + instr.substr(1) );
+        trace_from ( start_index + 1 );
+        trace_from ( start_index + 2 );
+      } else if (opcode == 'B') {
+        console.log ( "JP " + instr.substr(1) + " = " + addr );
+        trace_from ( addr - 0x200 );
+      } else if (opcode == 'E') {
+        console.log ( "SKP " + instr.substr(1) );
+        trace_from ( start_index + 1 );
+        trace_from ( start_index + 2 );
+      } else {
+        console.log ( "Other: " + disassemble_line(instr) );
+        trace_from ( start_index + 1 );
+      }
+    }
+  }
+}
+
+function trace_code() {
+  bintxt = document.getElementById ( "machine" ).value;
+  // Convert the text into lines
+  hex_lines = get_machine_lines ( bintxt );
+  instr_types = Array.from("d".repeat(hex_lines.length));
+  trace_from ( 0 );
+}
 
 function disassemble() {
+  // trace_code();
   // console.log ("Disassemble code");
   bintxt = document.getElementById ( "machine" ).value;
   // Convert the text into lines
-  lines = get_machine_lines ( bintxt );
+  hex_lines = get_machine_lines ( bintxt );
   // console.log ( "Text = " + bintxt );
   opts = document.getElementById ( "disassem_opts" ).value;
   // console.log ( "Disassemble with options: " + opts );
   // Clear the source window
   document.getElementById ( "source" ).value = "";
   // Process the lines one by one
-  for (l=0; l<lines.length; l++) {
+  for (l=0; l<hex_lines.length; l++) {
     if ( (opts == "Std") || (opts.indexOf("L") >= 0) ) {
       // document.getElementById ( "source" ).value += "L"+((l*2)+0x200).toString(16).toUpperCase() + ": ";
       document.getElementById ( "source" ).value += ((l*2)+0x200).toString(16).toUpperCase() + ": ";
     }
     if (opts.indexOf("H") >= 0) {
-      document.getElementById ( "source" ).value += lines[l] + "  ";
+      document.getElementById ( "source" ).value += hex_lines[l] + "  ";
     }
-    document.getElementById ( "source" ).value += disassemble_line ( lines[l] ) + "\n";
+    document.getElementById ( "source" ).value += disassemble_line ( hex_lines[l] ) + "\n";
   }
   if (opts == "Std") {
     // Generate a "Standard" disassembly
     // Build a dictionary of all labels (should be one per line at this point)
-    lines = document.getElementById ( "source" ).value.split("\n");
+    src_lines = document.getElementById ( "source" ).value.split("\n");
     all_labels = {};
-    for (l=0; l<lines.length; l++) {
-      if (lines[l].trim().length > 0) {
-        if (lines[l].trim().indexOf(":") >= 0) {
-          all_labels[lines[l].split(":")[0].trim()] = 0;
+    for (l=0; l<src_lines.length; l++) {
+      if (src_lines[l].trim().length > 0) {
+        if (src_lines[l].trim().indexOf(":") >= 0) {
+          all_labels[src_lines[l].split(":")[0].trim()] = 0;
         }
       }
     }
     // Build a dictionary of all labels that have actually been used
     used_labels = {};
-    for (l=0; l<lines.length; l++) {
-      if (lines[l].trim().length > 0) {
-        if (lines[l].trim().indexOf(":") >= 0) {
-          src = lines[l].split(":")[1].trim();
+    for (l=0; l<src_lines.length; l++) {
+      if (src_lines[l].trim().length > 0) {
+        if (src_lines[l].trim().indexOf(":") >= 0) {
+          src = src_lines[l].split(":")[1].trim();
           src = src.replaceAll(","," ");
           while (src.indexOf("  ") >= 0) {
             src = src.replaceAll("  ", " ");
@@ -904,12 +963,12 @@ function disassemble() {
     }
     // Regenerate the source text with only those labels that have been used
     text = "";
-    for (l=0; l<lines.length; l++) {
-      this_line = lines[l].trim();
+    for (l=0; l<src_lines.length; l++) {
+      this_line = src_lines[l].trim();
       if (this_line.length > 0) {
         sep = this_line.indexOf(":")
         if (sep < 0) {
-          text += lines[l] + "\n";
+          text += src_lines[l] + "\n";
         } else {
           lbl = this_line.substr(0,sep).trim();
           src = this_line.substr(sep+1).trim();
@@ -941,11 +1000,11 @@ function load() {
   stop_running = true;
   bintxt = document.getElementById ( "machine" ).value;
   // Convert the text into lines of instructions
-  lines = get_machine_lines ( bintxt );
+  hex_lines = get_machine_lines ( bintxt );
   addr = 0x0200;
-  for (i=0; i<lines.length; i++) {
-    mem[addr++] = parseInt ( lines[i].slice(0,2), 16 );
-    mem[addr++] = parseInt ( lines[i].slice(2,4), 16 );
+  for (i=0; i<hex_lines.length; i++) {
+    mem[addr++] = parseInt ( hex_lines[i].slice(0,2), 16 );
+    mem[addr++] = parseInt ( hex_lines[i].slice(2,4), 16 );
   }
   update_display();
 }
@@ -3253,44 +3312,6 @@ DONE_E: DATA F282  ; E!
      JP B1B
      JP 804
 </pre></td></tr>
-                                                             <!-- Attempt to use name to map keys -->
-<tr class="ex"><td class="ex" valign="top"><pre class="exhex" name="[[4,8],[6,9],[1,10],[9,7],[5,0]]" id="Tank Hex (not working yet)">
- 12 30 76 fb 60 20 80 65 4f 00 66 00 13 84 00 ff
- 00 00 00 01 00 0c 0a 00 19 02 04 06 08 02 02 03
- 2c 00 0f 00 02 05 2e 08 00 00 02 05 00 00 00 00
- 6e 00 6d a0 6a 08 69 06 68 04 67 02 66 19 64 10
- 63 0c 62 00 61 06 a2 12 fa 55 23 d4 60 40 f0 15
- f0 07 30 00 12 50 23 d4 23 0a 23 62 a2 12 f5 65
- 22 ae 22 c6 22 ec 3f 01 23 14 3f 01 22 ec 3f 01
- 22 ec 3f 01 22 7c 4f 01 13 66 12 62 a2 12 f5 65
- 46 00 35 00 12 88 13 8c e7 a1 62 09 e8 a1 62 04
- e9 a1 62 06 ea a1 62 01 42 00 00 ee 22 ae 81 20
- 23 9a 23 ac 6c 01 62 00 6f 00 a2 12 f5 55 a3 ff
- 41 01 60 00 41 04 60 13 41 06 60 0d 41 09 60 06
- f0 1e d3 47 00 ee 60 05 e0 9e 00 ee 45 0f 00 ee
- 65 0f 76 ff a2 12 f5 55 74 03 73 03 23 9a 23 9a
- 23 9a a2 23 f5 55 a4 19 d3 41 00 ee a2 23 f5 65
- 45 00 00 ee a4 19 d3 41 23 9a 6c 02 23 be 4b bb
- 13 0a d3 41 a2 23 f5 55 00 ee 65 00 60 00 a2 17
- f0 55 13 04 a2 1d f5 65 35 0f 13 44 a4 1a d3 45
- 32 00 13 32 c1 03 a2 19 f1 1e f0 65 81 00 c2 0f
- 72 01 23 9a a4 1a 6c 03 72 ff 6f 00 d3 45 a2 1d
- f5 55 00 ee c4 07 a4 1f f4 1e f0 65 83 00 a4 27
- f4 1e f0 65 84 00 a4 1a d3 45 60 20 f0 18 65 0f
- 13 3e 65 00 13 3e 4c 01 12 02 4c 02 13 82 a2 23
- f5 65 45 00 12 02 a4 19 d3 41 6f 00 d3 41 3f 01
- 12 02 7e 0a 60 40 f0 18 00 e0 12 4a 00 e0 23 d4
- 60 60 f0 18 13 94 6e 00 13 84 41 01 74 ff 41 04
- 73 ff 41 06 73 01 41 09 74 01 00 ee 44 00 74 01
- 43 00 73 01 43 38 73 ff 44 18 74 ff 00 ee 6b 00
- 44 00 13 ce 43 00 13 ce 43 3f 13 ce 44 1f 6b bb
- 6f 00 00 ee 63 08 64 08 a2 29 fe 33 f2 65 23 ec
- 63 28 a2 29 f6 33 f2 65 23 f2 00 ee f0 29 d3 45
- 73 06 f1 29 d3 45 73 06 f2 29 d3 45 00 ee 01 10
- 54 7c 6c 7c 7c 44 7c 7c 6c 7c 54 10 00 fc 78 6e
- 78 fc 00 3f 1e 76 1e 3f 00 80 a8 70 f8 70 a8 0b
- 1b 28 38 30 20 10 00 00 00 00 08 1b 1b 1b 18 04
-</pre></td></tr>
 
                                                                 <!-- Drop  Left Rotate Right -->
                                               <!-- Mapped,Unmapped:   M U   M U   M U   M U  -->
@@ -3559,41 +3580,6 @@ DONE_E: DATA F282  ; E!
      LD V0,19
      RET
 3EC: DATA 3723</pre></td></tr>
-
-<tr class="ex"><td class="ex" valign="top"><pre class="exhex" name="[[2,2],[4,7],[5,9],[6,8]]" id="Tetris (hex)">
- a2 b4 23 e6 22 b6 70 01 d0 11 30 25 12 06 71 ff
- d0 11 60 1a d0 11 60 25 31 00 12 0e c4 70 44 70
- 12 1c c3 03 60 1e 61 03 22 5c f5 15 d0 14 3f 01
- 12 3c d0 14 71 ff d0 14 23 40 12 1c e7 a1 22 72
- e8 a1 22 84 e9 a1 22 96 e2 9e 12 50 66 00 f6 15
- f6 07 36 00 12 3c d0 14 71 01 12 2a a2 c4 f4 1e
- 66 00 43 01 66 04 43 02 66 08 43 03 66 0c f6 1e
- 00 ee d0 14 70 ff 23 34 3f 01 00 ee d0 14 70 01
- 23 34 00 ee d0 14 70 01 23 34 3f 01 00 ee d0 14
- 70 ff 23 34 00 ee d0 14 73 01 43 04 63 00 22 5c
- 23 34 3f 01 00 ee d0 14 73 ff 43 ff 63 03 22 5c
- 23 34 00 ee 80 00 67 05 68 06 69 04 61 1f 65 10
- 62 07 00 ee 40 e0 00 00 40 c0 40 00 00 e0 40 00
- 40 60 40 00 40 40 60 00 20 e0 00 00 c0 40 40 00
- 00 e0 80 00 40 40 c0 00 00 e0 20 00 60 40 40 00
- 80 e0 00 00 40 c0 80 00 c0 60 00 00 40 c0 80 00
- c0 60 00 00 80 c0 40 00 00 60 c0 00 80 c0 40 00
- 00 60 c0 00 c0 c0 00 00 c0 c0 00 00 c0 c0 00 00
- c0 c0 00 00 40 40 40 40 00 f0 00 00 40 40 40 40
- 00 f0 00 00 d0 14 66 35 76 ff 36 00 13 38 00 ee
- a2 b4 8c 10 3c 1e 7c 01 3c 1e 7c 01 3c 1e 7c 01
- 23 5e 4b 0a 23 72 91 c0 00 ee 71 01 13 50 60 1b
- 6b 00 d0 11 3f 00 7b 01 d0 11 70 01 30 25 13 62
- 00 ee 60 1b d0 11 70 01 30 25 13 74 8e 10 8d e0
- 7e ff 60 1b 6b 00 d0 e1 3f 00 13 90 d0 e1 13 94
- d0 d1 7b 01 70 01 30 25 13 86 4b 00 13 a6 7d ff
- 7e ff 3d 01 13 82 23 c0 3f 01 23 c0 7a 01 23 c0
- 80 a0 6d 07 80 d2 40 04 75 fe 45 02 65 04 00 ee
- a7 00 f2 55 a8 04 fa 33 f2 65 f0 29 6d 32 6e 00
- dd e5 7d 05 f1 29 dd e5 7d 05 f2 29 dd e5 a7 00
- f2 65 a2 b4 00 ee 6a 00 60 19 00 ee 37 23
-</pre></td></tr>
-
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Invaders (not working yet)">
 ;===========================;
@@ -4245,6 +4231,44 @@ DONE_E: DATA F282  ; E!
      SYS 000
 </pre></td></tr>
 
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Jump Aligned">
+L0: JP L1
+L1: JP L2
+    LD V0,FF
+L2: JP L3
+    DATA FFFF
+L3: JP L4
+    DATA EEEE
+    DATA DDDD
+L4: JP L4
+</pre></td></tr>
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Jump Aligned Hex">
+1202
+1206
+60FF
+120A
+FFFF
+1210
+EEEE
+DDDD
+1210
+</pre></td></tr>
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Jump UnAligned Hex">
+1202
+1205
+FF12
+09FF
+FF12
+0FEE
+EEDD
+DD12
+0F00
+</pre></td></tr>
+
+
 <tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Draw small box hex">
 A20A
 601B
@@ -4255,6 +4279,80 @@ FF81
 8181
 8181
 81FF
+</pre></td></tr>
+
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exhex" name="[[2,2],[4,7],[5,9],[6,8]]" id="Tetris (hex)">
+ a2 b4 23 e6 22 b6 70 01 d0 11 30 25 12 06 71 ff
+ d0 11 60 1a d0 11 60 25 31 00 12 0e c4 70 44 70
+ 12 1c c3 03 60 1e 61 03 22 5c f5 15 d0 14 3f 01
+ 12 3c d0 14 71 ff d0 14 23 40 12 1c e7 a1 22 72
+ e8 a1 22 84 e9 a1 22 96 e2 9e 12 50 66 00 f6 15
+ f6 07 36 00 12 3c d0 14 71 01 12 2a a2 c4 f4 1e
+ 66 00 43 01 66 04 43 02 66 08 43 03 66 0c f6 1e
+ 00 ee d0 14 70 ff 23 34 3f 01 00 ee d0 14 70 01
+ 23 34 00 ee d0 14 70 01 23 34 3f 01 00 ee d0 14
+ 70 ff 23 34 00 ee d0 14 73 01 43 04 63 00 22 5c
+ 23 34 3f 01 00 ee d0 14 73 ff 43 ff 63 03 22 5c
+ 23 34 00 ee 80 00 67 05 68 06 69 04 61 1f 65 10
+ 62 07 00 ee 40 e0 00 00 40 c0 40 00 00 e0 40 00
+ 40 60 40 00 40 40 60 00 20 e0 00 00 c0 40 40 00
+ 00 e0 80 00 40 40 c0 00 00 e0 20 00 60 40 40 00
+ 80 e0 00 00 40 c0 80 00 c0 60 00 00 40 c0 80 00
+ c0 60 00 00 80 c0 40 00 00 60 c0 00 80 c0 40 00
+ 00 60 c0 00 c0 c0 00 00 c0 c0 00 00 c0 c0 00 00
+ c0 c0 00 00 40 40 40 40 00 f0 00 00 40 40 40 40
+ 00 f0 00 00 d0 14 66 35 76 ff 36 00 13 38 00 ee
+ a2 b4 8c 10 3c 1e 7c 01 3c 1e 7c 01 3c 1e 7c 01
+ 23 5e 4b 0a 23 72 91 c0 00 ee 71 01 13 50 60 1b
+ 6b 00 d0 11 3f 00 7b 01 d0 11 70 01 30 25 13 62
+ 00 ee 60 1b d0 11 70 01 30 25 13 74 8e 10 8d e0
+ 7e ff 60 1b 6b 00 d0 e1 3f 00 13 90 d0 e1 13 94
+ d0 d1 7b 01 70 01 30 25 13 86 4b 00 13 a6 7d ff
+ 7e ff 3d 01 13 82 23 c0 3f 01 23 c0 7a 01 23 c0
+ 80 a0 6d 07 80 d2 40 04 75 fe 45 02 65 04 00 ee
+ a7 00 f2 55 a8 04 fa 33 f2 65 f0 29 6d 32 6e 00
+ dd e5 7d 05 f1 29 dd e5 7d 05 f2 29 dd e5 a7 00
+ f2 65 a2 b4 00 ee 6a 00 60 19 00 ee 37 23
+</pre></td></tr>
+
+                                                             <!-- Attempt to use name to map keys -->
+<tr class="ex"><td class="ex" valign="top"><pre class="exhex" name="[[4,8],[6,9],[1,10],[9,7],[5,0]]" id="Tank Hex (not working yet)">
+ 12 30 76 fb 60 20 80 65 4f 00 66 00 13 84 00 ff
+ 00 00 00 01 00 0c 0a 00 19 02 04 06 08 02 02 03
+ 2c 00 0f 00 02 05 2e 08 00 00 02 05 00 00 00 00
+ 6e 00 6d a0 6a 08 69 06 68 04 67 02 66 19 64 10
+ 63 0c 62 00 61 06 a2 12 fa 55 23 d4 60 40 f0 15
+ f0 07 30 00 12 50 23 d4 23 0a 23 62 a2 12 f5 65
+ 22 ae 22 c6 22 ec 3f 01 23 14 3f 01 22 ec 3f 01
+ 22 ec 3f 01 22 7c 4f 01 13 66 12 62 a2 12 f5 65
+ 46 00 35 00 12 88 13 8c e7 a1 62 09 e8 a1 62 04
+ e9 a1 62 06 ea a1 62 01 42 00 00 ee 22 ae 81 20
+ 23 9a 23 ac 6c 01 62 00 6f 00 a2 12 f5 55 a3 ff
+ 41 01 60 00 41 04 60 13 41 06 60 0d 41 09 60 06
+ f0 1e d3 47 00 ee 60 05 e0 9e 00 ee 45 0f 00 ee
+ 65 0f 76 ff a2 12 f5 55 74 03 73 03 23 9a 23 9a
+ 23 9a a2 23 f5 55 a4 19 d3 41 00 ee a2 23 f5 65
+ 45 00 00 ee a4 19 d3 41 23 9a 6c 02 23 be 4b bb
+ 13 0a d3 41 a2 23 f5 55 00 ee 65 00 60 00 a2 17
+ f0 55 13 04 a2 1d f5 65 35 0f 13 44 a4 1a d3 45
+ 32 00 13 32 c1 03 a2 19 f1 1e f0 65 81 00 c2 0f
+ 72 01 23 9a a4 1a 6c 03 72 ff 6f 00 d3 45 a2 1d
+ f5 55 00 ee c4 07 a4 1f f4 1e f0 65 83 00 a4 27
+ f4 1e f0 65 84 00 a4 1a d3 45 60 20 f0 18 65 0f
+ 13 3e 65 00 13 3e 4c 01 12 02 4c 02 13 82 a2 23
+ f5 65 45 00 12 02 a4 19 d3 41 6f 00 d3 41 3f 01
+ 12 02 7e 0a 60 40 f0 18 00 e0 12 4a 00 e0 23 d4
+ 60 60 f0 18 13 94 6e 00 13 84 41 01 74 ff 41 04
+ 73 ff 41 06 73 01 41 09 74 01 00 ee 44 00 74 01
+ 43 00 73 01 43 38 73 ff 44 18 74 ff 00 ee 6b 00
+ 44 00 13 ce 43 00 13 ce 43 3f 13 ce 44 1f 6b bb
+ 6f 00 00 ee 63 08 64 08 a2 29 fe 33 f2 65 23 ec
+ 63 28 a2 29 f6 33 f2 65 23 f2 00 ee f0 29 d3 45
+ 73 06 f1 29 d3 45 73 06 f2 29 d3 45 00 ee 01 10
+ 54 7c 6c 7c 7c 44 7c 7c 6c 7c 54 10 00 fc 78 6e
+ 78 fc 00 3f 1e 76 1e 3f 00 80 a8 70 f8 70 a8 0b
+ 1b 28 38 30 20 10 00 00 00 00 08 1b 1b 1b 18 04
 </pre></td></tr>
 
 
