@@ -4233,15 +4233,21 @@ DONE_E: DATA F282  ; E!
 
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Jump Aligned">
-L0: JP L1
-L1: JP L2
-    LD V0,FF
-L2: JP L3
-    DATA FFFF
-L3: JP L4
-    DATA EEEE
-    DATA DDDD
-L4: JP L4
+L0:  JP L1        ; Jump to label L1 (skipping 0 bytes)
+L1:  JP L2        ; Jump to label L2 (skipping 2 bytes)
+     LD V0,FF     ; Skipped Instruction
+L2:  JP L3        ; Jump to label L3 (skipping 2 bytes)
+     DATA FFFF    ; Skipped Data
+L3:  JP L4        ; Jump to label L4 (skipping 4 bytes)
+     DATA EEEE    ; Skipped Data
+     DATA DDDD    ; Skipped Data
+L4:  LD I,OK      ; Load sprite address
+     LD V0,1B     ; Load x to draw sprite
+     LD V1,0E     ; Load y to draw sprite
+     DRW V0,V1,3  ; Draw at (V0,V1) 3 rows
+END: JP END       ; Stay here ... forever
+OK:  DATA EAAC    ; First and second rows of OK
+     DATA EA00    ; Third (last) row of OK
 </pre></td></tr>
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Jump Aligned Hex">
@@ -4253,10 +4259,51 @@ FFFF
 1210
 EEEE
 DDDD
-1210
+A21A
+601B
+610E
+D013
+1218
+EAAC
+EA00
 </pre></td></tr>
 
+<!--
+200: 1202  JP 202       ; L0: Jump to label L1 (skipping 0 bytes)
+202: 1205  JP 205       ; L1: Jump to label L2 (skipping 2 bytes)
+204: FF    FF           ;     Skipped Single byte
+205: 1209  JP 209       ; L2: Jump to label L3 (skipping 2 bytes)
+207: FFFF  DATA FFFF
+209: 120F  JP 20F       ; L3: Jump to label L4 (skipping 4 bytes)
+20B: EEEE  DATA EEEE    ;     Skipped Double byte
+20D: DDDD  DRW VD,VD,D  ;     Skipped Double byte
+20F: A219  LD I,219     ; L4: Load sprite address
+211: 601B  LD V0,1B     ;     Load x to draw
+213: 610E  LD V1,0E     ;     Load y to draw
+215: D013  DRW V0,V1,3  ;     Draw
+217: 1217  JP 217       ;     Jump here
+219: EAAC  DATA EAAC
+21B: EA00  DATA EA00
+-->
 <tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Jump UnAligned Hex">
+1202
+1205
+FF12
+09FF
+FF12
+0FEE
+EEDD
+DDA2
+1960
+1B61
+0ED0
+1312
+17EA
+ACEA
+</pre></td></tr>
+
+
+<tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="OLD Jump UnAligned Hex">
 1202
 1205
 FF12
