@@ -1256,42 +1256,44 @@ function step1() {
   } else if ( (instruction & 0xF00F) == 0x8004) { // ADD Vx,Vy
     // console.log ( "ADD Reg" );
     result = V[(instruction&0x0F00)>>8] + V[(instruction&0x00F0)>>4];
+    V[(instruction&0x0F00)>>8] = result & 0xFF;
     if (result > 0xFF) {
       V[0xF] = 1;
     } else {
       V[0xF] = 0;
     }
-    V[(instruction&0x0F00)>>8] = result & 0xFF;
     PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8005) { // SUB Vx,Vy: Vx = Vx - Vy
     // console.log ( "SUB Reg" );
     result = V[(instruction&0x0F00)>>8] - V[(instruction&0x00F0)>>4];
+    V[(instruction&0x0F00)>>8] = result & 0xFF;
     if (result < 0) {
       V[0xF] = 0;
     } else {
       V[0xF] = 1;
     }
-    V[(instruction&0x0F00)>>8] = result & 0xFF;
     PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8006) { // SHR Vx,Vy: Vx = Vy >> 1
     // console.log ( "SHR" );
-    V[0xF] = V[(instruction&0x00F0)>>4] & 0x01;
-    V[(instruction&0x0F00)>>8] = V[(instruction&0x00F0)>>4] >> 1;
+    result = V[(instruction&0x00F0)>>4] & 0x01; // store flag result
+    V[(instruction&0x0F00)>>8] = V[(instruction&0x00F0)>>4] >> 1; // calculate Vx
+    V[0xF] = result;  // then set VF
     PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x8007) { // SUBN Vx,Vy: Vx = Vy - Vx
     // console.log ( "SUBN" );
     result = V[(instruction&0x00F0)>>4] - V[(instruction&0x0F00)>>8];
+    V[(instruction&0x0F00)>>8] = result & 0xFF;
     if (result < 0) {
       V[0xF] = 0;
     } else {
       V[0xF] = 1;
     }
-    V[(instruction&0x0F00)>>8] = result & 0xFF;
     PC = PC + 2;
-  } else if ( (instruction & 0xF00F) == 0x800E) { // SHL Vx,Vy
+  } else if ( (instruction & 0xF00F) == 0x800E) { // SHL Vx,Vy: Vx = Vy << 1
     // console.log ( "SHL" );
-    V[0xF] = (V[(instruction&0x00F0)>>4] >> 7) & 0x01;
+    result = (V[(instruction&0x00F0)>>4] >> 7) & 0x01;
     V[(instruction&0x0F00)>>8] = (V[(instruction&0x00F0)>>4] << 1) & 0xff;
+    V[0xF] = result;
     PC = PC + 2;
   } else if ( (instruction & 0xF00F) == 0x9000) { // SNE Vx,Vy
     // console.log ( "SNE - Skip if Not Equal Reg" );
