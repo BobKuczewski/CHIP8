@@ -482,18 +482,30 @@ function assemble_text ( srctxt ) {
   lines = new_lines;
 
   // Compute the label addresses
+  current_addr = 0x200;
   label_dict = {};
   for (l=0; l<lines.length; l++) {
     line = lines[l].toUpperCase().trim();
     if (line.indexOf(":") >= 0) {
       // Store the label and its location
       label = line.substr(0,line.indexOf(":"));
-      label_dict[label] = ((2*l)+0x200).toString(16);
+      // label_dict[label] = ((2*l)+0x200).toString(16);  ////// INCORRECT for byte addressing
+      label_dict[label] = current_addr.toString(16);
       while (label_dict[label].length < 3) {
         label_dict[label] = '0' + label_dict[label];
       }
       // Remove the label from the line of code for assembly
       lines[l] = lines[l].substr(line.indexOf(":")+1).trim();
+    }
+    // Increment the current address
+    if (lines[l].startsWith("BYTE")) {
+      // Increment by 1 for a single data byte
+      current_addr += 1;
+    } else if ( lines[l].startsWith("DATA") || lines[l].startsWith("WORD") ) {
+      // Increment by 2 for an instruction
+      current_addr += 2;
+    } else {
+      current_addr += 2;
     }
   }
   keys = Object.keys(label_dict);
@@ -519,6 +531,10 @@ function assemble_text ( srctxt ) {
         line = line.substr(line.indexOf(":")+1).trim();
       }
       if (line.slice(0,5) == "DATA ") {
+        bintxt += line.slice(5).trim() + "\n";
+      } else if (line.slice(0,5) == "WORD ") {
+        bintxt += line.slice(5).trim() + "\n";
+      } else if (line.slice(0,5) == "BYTE ") {
         bintxt += line.slice(5).trim() + "\n";
       } else if (line.slice(0,4) == "SYS ") {
         bintxt += "0" + line.slice(4).trim() + "\n";
@@ -710,7 +726,9 @@ function assemble() {
 }
 
 hex_lines = null;
+hex_bytes = null;
 instr_types = null;
+byte_types = null;
 
 function get_machine_lines ( text_in ) {
   // Normalize line endings and remove empty lines
@@ -728,13 +746,53 @@ function get_machine_lines ( text_in ) {
   while (text.indexOf(" ") >= 0) {
     text = replaceAll(text, " ", "");
   }
+  text_bytes = text;
   // Split by 4 digits per instruction
   hex_lines = [];
   while (text.length > 0) {
     hex_lines.push ( text.slice(0,4) );
     text = text.slice(4)
   }
+  // Split by 2 digits per byte
+  hex_bytes = [];
+  while (text_bytes.length > 0) {
+    hex_bytes.push ( text_bytes.slice(0,2) );
+    text_bytes = text_bytes.slice(2)
+  }
   return ( hex_lines );
+}
+
+
+function get_machine_bytes ( text_in ) {
+  // Normalize line endings and remove empty lines
+  text = replaceAll( text_in, "\r", "\n");
+  while (text.indexOf("\n\n") >= 0) {
+    text = replaceAll(text, "\n\n", "\n");
+  }
+  // Convert to upper case
+  text = "" + text.toUpperCase();
+  // Remove all line endings
+  while (text.indexOf("\n") >= 0) {
+    text = replaceAll(text, "\n", "");
+  }
+  // Remove all spaces
+  while (text.indexOf(" ") >= 0) {
+    text = replaceAll(text, " ", "");
+  }
+  text_bytes = text;
+  // Split by 4 digits per instruction
+  hex_lines = [];
+  while (text.length > 0) {
+    hex_lines.push ( text.slice(0,4) );
+    text = text.slice(4)
+  }
+  // Split by 2 digits per byte
+  hex_bytes = [];
+  while (text_bytes.length > 0) {
+    hex_bytes.push ( text_bytes.slice(0,2) );
+    text_bytes = text_bytes.slice(2)
+  }
+  return ( hex_bytes );
 }
 
 function disassemble_line ( line ) {
@@ -851,15 +909,17 @@ function disassemble_line ( line ) {
   return ( result );
 }
 
-function trace_from ( start_index ) {
-  // console.log ( "trace_from ( " + start_index + " )" );
-  if (start_index < hex_lines.length) {
+function trace_from ( start_byte ) {
+  console.log ( "trace_from ( " + start_byte + " )" );
+  // Check to be sure we're not done
+  if (start_byte < (hex_bytes.length-1)) {
     // Check to ensure that this instruction hasn't already been traced
-    if (instr_types[start_index] != "c") {
+    if (byte_types[start_byte] != "c") {
       // Always assume this is code, and mark as such
-      instr_types[start_index] = "c";
+      byte_types[start_byte] = "c";
+      byte_types[start_byte+1] = "c";
       // Get the instruction
-      instr = hex_lines[start_index].toUpperCase();
+      instr = hex_bytes[start_byte].toUpperCase() + hex_bytes[start_byte+1].toUpperCase();
       // Get the opcode
       opcode = instr.substr(0,1);
       if (instr == '00EE') {
@@ -874,26 +934,26 @@ function trace_from ( start_index ) {
         trace_from ( addr - 0x200 );
       } else if (opcode == '3') {
         console.log ( "SE " + instr.substr(1) );
-        trace_from ( start_index + 1 );
-        trace_from ( start_index + 2 );
+        trace_from ( start_byte + 2 );
+        trace_from ( start_byte + 4 );
       } else if (opcode == '4') {
         console.log ( "SNE " + instr.substr(1) );
-        trace_from ( start_index + 1 );
-        trace_from ( start_index + 2 );
+        trace_from ( start_byte + 2 );
+        trace_from ( start_byte + 4 );
       } else if (opcode == '5') {
         console.log ( "SE " + instr.substr(1) );
-        trace_from ( start_index + 1 );
-        trace_from ( start_index + 2 );
+        trace_from ( start_byte + 2 );
+        trace_from ( start_byte + 4 );
       } else if (opcode == 'B') {
         console.log ( "JP " + instr.substr(1) + " = " + addr );
         trace_from ( addr - 0x200 );
       } else if (opcode == 'E') {
         console.log ( "SKP " + instr.substr(1) );
-        trace_from ( start_index + 1 );
-        trace_from ( start_index + 2 );
+        trace_from ( start_byte + 2 );
+        trace_from ( start_byte + 4 );
       } else {
         console.log ( "Other: " + disassemble_line(instr) );
-        trace_from ( start_index + 1 );
+        trace_from ( start_byte + 2 );
       }
     }
   }
@@ -903,31 +963,71 @@ function trace_code() {
   bintxt = document.getElementById ( "machine" ).value;
   // Convert the text into lines
   hex_lines = get_machine_lines ( bintxt );
+  hex_bytes = get_machine_bytes ( bintxt );
   instr_types = Array.from("d".repeat(hex_lines.length));
+  byte_types = Array.from("d".repeat(hex_bytes.length));
   trace_from ( 0 );
 }
 
 function disassemble() {
-  // trace_code();
-  // console.log ("Disassemble code");
   bintxt = document.getElementById ( "machine" ).value;
-  // Convert the text into lines
-  hex_lines = get_machine_lines ( bintxt );
+  // console.log ( "Text = " + bintxt );
+  // Convert the text into bytes
+  hex_bytes = get_machine_bytes ( bintxt );
+  // console.log ( "Bytes = " + hex_bytes );
+  byte_types = Array.from("d".repeat(hex_bytes.length));
+  trace_from ( 0 );
+
   // console.log ( "Text = " + bintxt );
   opts = document.getElementById ( "disassem_opts" ).value;
   // console.log ( "Disassemble with options: " + opts );
   // Clear the source window
   document.getElementById ( "source" ).value = "";
-  // Process the lines one by one
-  for (l=0; l<hex_lines.length; l++) {
+  // Process the bytes one by one
+  byte_index = 0;
+  //for (l=0; l<hex_lines.length; l++) {
+  while (byte_index < hex_bytes.length) {
+    // Handle an instruction or data
     if ( (opts == "Std") || (opts.indexOf("L") >= 0) ) {
-      // document.getElementById ( "source" ).value += "L"+((l*2)+0x200).toString(16).toUpperCase() + ": ";
-      document.getElementById ( "source" ).value += ((l*2)+0x200).toString(16).toUpperCase() + ": ";
+      // Include the hex address of this instruction
+      // document.getElementById ( "source" ).value += "L"+(byte_index+0x200).toString(16).toUpperCase() + ": ";
+      document.getElementById ( "source" ).value += (byte_index+0x200).toString(16).toUpperCase() + ": ";
     }
-    if (opts.indexOf("H") >= 0) {
-      document.getElementById ( "source" ).value += hex_lines[l] + "  ";
+    // Include the disassembled source text of this instruction
+    if (byte_types[byte_index] == 'c') {
+      inst_word = hex_bytes[byte_index] + hex_bytes[byte_index+1];
+      if (opts.indexOf("H") >= 0) {
+        // Include the hex representation of this instruction
+        document.getElementById ( "source" ).value += inst_word + "  ";
+      }
+      document.getElementById ( "source" ).value += disassemble_line ( inst_word ) + "\n";
+      byte_index += 2;
+    } else {
+      // Handle data
+      output_as_word = false;
+      if ((byte_index+1) < hex_bytes.length) {
+        if (byte_types[byte_index+1] != 'c') {
+          // Output 2 data bytes as a word
+          output_as_word = true;
+        }
+      }
+      if (output_as_word) {
+        word = hex_bytes[byte_index] + hex_bytes[byte_index+1];
+        if (opts.indexOf("H") >= 0) {
+          // Include the hex representation of this instruction
+          document.getElementById ( "source" ).value += word + "  ";
+        }
+        document.getElementById ( "source" ).value += "WORD " + word + "\n";
+        byte_index += 2;
+      } else {
+        if (opts.indexOf("H") >= 0) {
+          // Include the hex representation of this instruction
+          document.getElementById ( "source" ).value += hex_bytes[byte_index] + "    ";
+        }
+        document.getElementById ( "source" ).value += "BYTE " + hex_bytes[byte_index] + "\n";
+        byte_index += 1;
+      }
     }
-    document.getElementById ( "source" ).value += disassemble_line ( hex_lines[l] ) + "\n";
   }
   if (opts == "Std") {
     // Generate a "Standard" disassembly
@@ -985,6 +1085,7 @@ function disassemble() {
     document.getElementById ( "source" ).value = text;
   }
 }
+
 
 saved_text = "";
 function save() {
@@ -1964,6 +2065,8 @@ newly drawn pixel value is the same as the previous pixel value, then the pixel 
 Code   Assembly           Description - All numbers are hexadecimal
 ----   --------           -----------------------------------------
        lbl:               &#x2705; A label - must not match any other string in the program!
+nn   - BYTE nn            &#x2705; Initialize a data byte (all values in hex)
+nnnn - WORD nnnn          &#x2705; Initialize a data word (all values in hex)
 nnnn - DATA nnnn          &#x2705; Initialize a data word (all values in hex)
 
 0nnn - SYS addr           &#x274C;? Jump to a machine code routine at nnn.
@@ -4302,19 +4405,23 @@ DDA2
 ACEA
 </pre></td></tr>
 
-
-<tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="OLD Jump UnAligned Hex">
+<tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Jump UnAligned Hex Bytes">
 1202
 1205
-FF12
-09FF
-FF12
-0FEE
-EEDD
-DD12
-0F00
+FF
+1209
+FFFF
+120F
+EEEE
+DDDD
+A219
+601B
+610E
+D013
+1217
+EAAC
+EA
 </pre></td></tr>
-
 
 <tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Draw small box hex">
 A20A
