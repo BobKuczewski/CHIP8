@@ -1095,18 +1095,19 @@ function disassemble() {
   reassembled_hex_code = assemble_text ( document.getElementById ( "source" ).value );
   // reassembled_hex_code = "BAAD" + reassembled_hex_code + "BAAD";
   original_hex_code = document.getElementById ( "machine" ).value;
-  orig_norm = original_hex_code.replaceAll('\n','').trim().toUpperCase();
-  reas_norm = reassembled_hex_code.replaceAll('\n','').trim().toUpperCase();
+  orig_norm = original_hex_code.replaceAll('\n','').replaceAll(' ','').trim().toUpperCase();
+  reas_norm = reassembled_hex_code.replaceAll('\n','').replaceAll(' ','').trim().toUpperCase();
   if ( orig_norm != reas_norm ) {
     console.log ( "Original code:\n" + original_hex_code );
     console.log ( "Reassembled code:\n" + reassembled_hex_code );
     for (i=0; i<Math.max(orig_norm.length,reas_norm.length); i+=2) {
       orig_byte = orig_norm.substr(i,2);
       reas_byte = reas_norm.substr(i,2);
+      line_str = (i+0x200).toString(16).toUpperCase() + ": " + orig_byte;
       if (orig_byte == reas_byte) {
-        console.log ( orig_byte + "  =  " + reas_byte );
+        console.log ( line_str + "  =  " + reas_byte );
       } else {
-        console.log ( orig_byte + " =/= " + reas_byte + "   <----" );
+        console.log ( line_str + " =/= " + reas_byte + "   <----" );
       }
     }
     window.alert ( "Warning: Disassembled code does not re-assemble to original hex code. Check console for details." );
