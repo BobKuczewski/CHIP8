@@ -910,7 +910,8 @@ function disassemble_line ( line ) {
 }
 
 function trace_from ( start_byte ) {
-  console.log ( "Tracing from " + (start_byte+0x200).toString(16).toUpperCase() );
+  start_addr_hex = (start_byte+0x200).toString(16).toUpperCase();
+  // console.log ( "Tracing from " + start_addr_hex );
   // Check to be sure we're not done
   if (start_byte < (hex_bytes.length-1)) {
     // Check to ensure that this instruction hasn't already been traced
@@ -923,39 +924,39 @@ function trace_from ( start_byte ) {
       // Get the opcode
       opcode = instr.substr(0,1);
       if (instr == '00EE') {      // RET
-        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": RET" );
+        // console.log ( start_addr_hex + ": RET" );
       } else if (opcode == '1') { // JP 1nnn
         addr = parseInt ( instr.substr(1), 16 );
-        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": JP " + instr.substr(1) + " = " + addr.toString(16).toUpperCase() );
+        // console.log ( start_addr_hex + ": JP " + instr.substr(1) + " = " + addr.toString(16).toUpperCase() );
         trace_from ( addr - 0x200 );
       } else if (opcode == '2') { // CALL 2nnn
         addr = parseInt ( instr.substr(1), 16 );
-        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": CALL " + instr.substr(1) + " = " + addr.toString(16).toUpperCase() );
+        // console.log ( start_addr_hex + ": CALL " + instr.substr(1) + " = " + addr.toString(16).toUpperCase() );
         trace_from ( addr - 0x200 );
         trace_from ( start_byte + 2 );
       } else if (opcode == '3') { // SE 3xkk
-        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": SE " + instr.substr(1) );
+        // console.log ( start_addr_hex + ": SE " + instr.substr(1) );
         trace_from ( start_byte + 2 );
         trace_from ( start_byte + 4 );
       } else if (opcode == '4') { // SNE 4xkk
-        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": SNE " + instr.substr(1) );
+        // console.log ( start_addr_hex + ": SNE " + instr.substr(1) );
         trace_from ( start_byte + 2 );
         trace_from ( start_byte + 4 );
       } else if (opcode == '5') { // SE 5xy0
-        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": SE " + instr.substr(1) );
+        // console.log ( start_addr_hex + ": SE " + instr.substr(1) );
         trace_from ( start_byte + 2 );
         trace_from ( start_byte + 4 );
       } else if (opcode == 'B') { // JP Bnnn (offset from V0)
         // This instruction cannot be statically traced
-        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": JP " + instr.substr(1) + " = " + addr.toString(16).toUpperCase() );
+        console.log ( start_addr_hex + ": JP " + instr.substr(1) + " (" + instr + ")" );
         console.log ( "Warning: This instruction cannot be statically traced." );
         trace_from ( start_byte + 2 );
       } else if (opcode == 'E') {
-        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": SKP " + instr.substr(1) );
+        // console.log ( start_addr_hex + ": SKP " + instr.substr(1) );
         trace_from ( start_byte + 2 );
         trace_from ( start_byte + 4 );
       } else {
-        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": Other: " + disassemble_line(instr) );
+        // console.log ( start_addr_hex + ": Other: " + disassemble_line(instr) );
         trace_from ( start_byte + 2 );
       }
     }
@@ -1391,7 +1392,7 @@ function step1() {
     x2 = Math.floor(x/100);
     x1 = Math.floor((x-(100*x2))/10);
     x0 = x % 10;
-    console.log ( "LD B,Vx with x=" + x + ": " + x2 + " " + x1 + " " + x0 );
+    // console.log ( "LD B,Vx with x=" + x + ": " + x2 + " " + x1 + " " + x0 );
     mem[I+0] = x2;
     mem[I+1] = x1;
     mem[I+2] = x0;
