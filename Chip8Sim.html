@@ -910,7 +910,7 @@ function disassemble_line ( line ) {
 }
 
 function trace_from ( start_byte ) {
-  console.log ( "trace_from ( " + start_byte + " )" );
+  console.log ( "Tracing from " + (start_byte+0x200).toString(16).toUpperCase() );
   // Check to be sure we're not done
   if (start_byte < (hex_bytes.length-1)) {
     // Check to ensure that this instruction hasn't already been traced
@@ -922,37 +922,40 @@ function trace_from ( start_byte ) {
       instr = hex_bytes[start_byte].toUpperCase() + hex_bytes[start_byte+1].toUpperCase();
       // Get the opcode
       opcode = instr.substr(0,1);
-      if (instr == '00EE') {
-        console.log ( "RET " + instr.substr(1) );
-      } else if (opcode == '1') {
+      if (instr == '00EE') {      // RET
+        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": RET" );
+      } else if (opcode == '1') { // JP 1nnn
         addr = parseInt ( instr.substr(1), 16 );
-        console.log ( "JP " + instr.substr(1) + " = " + addr );
+        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": JP " + instr.substr(1) + " = " + addr.toString(16).toUpperCase() );
         trace_from ( addr - 0x200 );
-      } else if (opcode == '2') {
+      } else if (opcode == '2') { // CALL 2nnn
         addr = parseInt ( instr.substr(1), 16 );
-        console.log ( "CALL " + instr.substr(1) + " = " + addr );
+        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": CALL " + instr.substr(1) + " = " + addr.toString(16).toUpperCase() );
         trace_from ( addr - 0x200 );
-      } else if (opcode == '3') {
-        console.log ( "SE " + instr.substr(1) );
+        trace_from ( start_byte + 2 );
+      } else if (opcode == '3') { // SE 3xkk
+        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": SE " + instr.substr(1) );
         trace_from ( start_byte + 2 );
         trace_from ( start_byte + 4 );
-      } else if (opcode == '4') {
-        console.log ( "SNE " + instr.substr(1) );
+      } else if (opcode == '4') { // SNE 4xkk
+        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": SNE " + instr.substr(1) );
         trace_from ( start_byte + 2 );
         trace_from ( start_byte + 4 );
-      } else if (opcode == '5') {
-        console.log ( "SE " + instr.substr(1) );
+      } else if (opcode == '5') { // SE 5xy0
+        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": SE " + instr.substr(1) );
         trace_from ( start_byte + 2 );
         trace_from ( start_byte + 4 );
-      } else if (opcode == 'B') {
-        console.log ( "JP " + instr.substr(1) + " = " + addr );
-        trace_from ( addr - 0x200 );
+      } else if (opcode == 'B') { // JP Bnnn (offset from V0)
+        // This instruction cannot be statically traced
+        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": JP " + instr.substr(1) + " = " + addr.toString(16).toUpperCase() );
+        console.log ( "Warning: This instruction cannot be statically traced." );
+        trace_from ( start_byte + 2 );
       } else if (opcode == 'E') {
-        console.log ( "SKP " + instr.substr(1) );
+        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": SKP " + instr.substr(1) );
         trace_from ( start_byte + 2 );
         trace_from ( start_byte + 4 );
       } else {
-        console.log ( "Other: " + disassemble_line(instr) );
+        console.log ( (start_byte+0x200).toString(16).toUpperCase() + ": Other: " + disassemble_line(instr) );
         trace_from ( start_byte + 2 );
       }
     }
@@ -4353,72 +4356,46 @@ OK:  DATA EAAC    ; First and second rows of OK
      DATA EA00    ; Third (last) row of OK
 </pre></td></tr>
 
-<tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Jump Aligned Hex">
-1202
-1206
-60FF
-120A
-FFFF
-1210
-EEEE
-DDDD
-A21A
-601B
-610E
-D013
-1218
-EAAC
-EA00
+<tr class="ex"><td class="ex" valign="top"><pre class="exsrc" id="Jump UnAligned">
+L0:  JP L1        ; Jump to label L1 (skipping 0 bytes)
+L1:  JP L2        ; Jump to label L2 (skipping 1 bytes)
+     BYTE  FF     ; Skipped Single byte
+L2:  JP L3        ; Jump to label L3 (skipping 2 bytes)
+     WORD  FFFF   ; Skipped Double byte
+L3:  JP L4        ; Jump to label L4 (skipping 3 bytes)
+     DRW VD,VD,D  ; Skipped Word instruction
+     BYTE 55      ; Skipped Byte
+L4:  JP L5        ; Jump to label L5 (skipping 5 bytes)
+     WORD  ACE1   ; Skipped Word
+     WORD  ACE2   ; Skipped Word
+     BYTE AA      ; Skipped Byte
+L5:  LD I,OK      ; Load sprite address at OK
+     LD V0,1B     ; Load x to draw
+     LD V1,0E     ; Load y to draw
+     DRW V0,V1,3  ; Draw
+END: JP END       ; Jump here forever
+OK:  WORD  EAAC   ; First 2 rows of the "OK" sprite
+     BYTE  EA     ; Last row of the "OK" sprite
 </pre></td></tr>
 
-<!--
-200: 1202  JP 202       ; L0: Jump to label L1 (skipping 0 bytes)
-202: 1205  JP 205       ; L1: Jump to label L2 (skipping 2 bytes)
-204: FF    FF           ;     Skipped Single byte
-205: 1209  JP 209       ; L2: Jump to label L3 (skipping 2 bytes)
-207: FFFF  DATA FFFF
-209: 120F  JP 20F       ; L3: Jump to label L4 (skipping 4 bytes)
-20B: EEEE  DATA EEEE    ;     Skipped Double byte
-20D: DDDD  DRW VD,VD,D  ;     Skipped Double byte
-20F: A219  LD I,219     ; L4: Load sprite address
-211: 601B  LD V0,1B     ;     Load x to draw
-213: 610E  LD V1,0E     ;     Load y to draw
-215: D013  DRW V0,V1,3  ;     Draw
-217: 1217  JP 217       ;     Jump here
-219: EAAC  DATA EAAC
-21B: EA00  DATA EA00
--->
 <tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Jump UnAligned Hex">
-1202
-1205
-FF12
-09FF
-FF12
-0FEE
-EEDD
-DDA2
-1960
-1B61
-0ED0
-1312
-17EA
-ACEA
-</pre></td></tr>
-
-<tr class="ex"><td class="ex" valign="top"><pre class="exhex" id="Jump UnAligned Hex Bytes">
 1202
 1205
 FF
 1209
 FFFF
-120F
-EEEE
+120E
 DDDD
-A219
+55
+1215
+ACE1
+ACE2
+AA
+A21F
 601B
 610E
 D013
-1217
+121D
 EAAC
 EA
 </pre></td></tr>
