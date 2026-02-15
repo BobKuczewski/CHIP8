@@ -1088,6 +1088,25 @@ function disassemble() {
     }
     document.getElementById ( "source" ).value = text;
   }
+  reassembled_hex_code = assemble_text ( document.getElementById ( "source" ).value );
+  // reassembled_hex_code = "BAAD" + reassembled_hex_code + "BAAD";
+  original_hex_code = document.getElementById ( "machine" ).value;
+  orig_norm = original_hex_code.replaceAll('\n','').trim().toUpperCase();
+  reas_norm = reassembled_hex_code.replaceAll('\n','').trim().toUpperCase();
+  if ( orig_norm != reas_norm ) {
+    console.log ( "Original code:\n" + original_hex_code );
+    console.log ( "Reassembled code:\n" + reassembled_hex_code );
+    for (i=0; i<Math.max(orig_norm.length,reas_norm.length); i+=2) {
+      orig_byte = orig_norm.substr(i,2);
+      reas_byte = reas_norm.substr(i,2);
+      if (orig_byte == reas_byte) {
+        console.log ( orig_byte + "  =  " + reas_byte );
+      } else {
+        console.log ( orig_byte + " =/= " + reas_byte + "   <----" );
+      }
+    }
+    window.alert ( "Warning: Disassembled code does not re-assemble to original hex code. Check console for details." );
+  }
 }
 
 
@@ -1695,7 +1714,9 @@ function beep() {
       <input type="button" name="restore" value="Restore" onclick="beep(); restore();"></input>
     </td>
     <td>
-      &nbsp; &nbsp; &nbsp; &nbsp;
+      &nbsp; &nbsp;
+    </td>
+    <td>
       <input type="button" name="disassem" value="Disassemble as" onclick="beep(); disassemble();"></input>
     </td>
     <td>
@@ -1708,12 +1729,12 @@ function beep() {
       </select>
     </td>
     <td>
-      &nbsp; &nbsp; &nbsp; &nbsp;
+      &nbsp; &nbsp;
       <input type="button" name="load"  value="Load"  onclick="beep(); load();"></input>
       <input type="button" name="reset"  value="Reset"  onclick="beep(); reset();"></input>
     </td>
     <td>
-      &nbsp; &nbsp; &nbsp; &nbsp;
+      &nbsp; &nbsp;
       <input type="button" name="run1" value="Step" onclick="step_clicked();"></input>
       &nbsp; &nbsp;
       <input type="button" name="stop" value="↻" onclick="beep(); reload_and_wait();" style="background-color: #AAAAFF;"></input>
